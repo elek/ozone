@@ -142,7 +142,7 @@ public class DatanodeChunkGenerator extends BaseFreonGenerator implements
 
     //Always use this fake blockid.
     DatanodeBlockID blockId = DatanodeBlockID.newBuilder()
-        .setContainerID(1L)
+        .setContainerID((stepNo / 300_000) + 1)
         .setLocalID(stepNo % 20)
         .setBlockCommitSequenceId(stepNo)
         .build();
