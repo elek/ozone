@@ -16,8 +16,8 @@
 
 FROM apache/ozone-runner:@docker.ozone-runner.version@
 
-ENV PATH /opt/hadoop/libexec:${PATH}
+ENV PATH /opt/hadoop/libexec:$PATH
 
-ADD --chown=hadoop . /opt/hadoop
-
+ADD . /opt/hadoop
+RUN sudo chown -R hadoop. /opt/hadoop
 WORKDIR /opt/hadoop
