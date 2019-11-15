@@ -171,7 +171,7 @@ public class ContainerStateMachine extends BaseStateMachine {
         .expireAfterAccess(expiryInterval, TimeUnit.MILLISECONDS)
         // set the limit on no of cached entries equal to no of max threads
         // executing writeStateMachineData
-        .maximumSize(chunkExecutor.getCorePoolSize()).build();
+        .maximumSize(5000).build();
     this.container2BCSIDMap = new ConcurrentHashMap<>();
 
     final int numContainerOpExecutors = conf.getInt(
