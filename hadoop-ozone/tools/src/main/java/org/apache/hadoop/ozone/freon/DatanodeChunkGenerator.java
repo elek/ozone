@@ -71,6 +71,12 @@ public class DatanodeChunkGenerator extends BaseFreonGenerator implements
       defaultValue = "1024")
   private int chunkSize;
 
+  @Option(names = {"-o", "--offset"},
+      description = "Container id offset (will be added to the used container"
+          + " id numbers)",
+      defaultValue = "0")
+  private int offset;
+
   @Option(names = {"-l", "--pipeline"},
       description = "Pipeline to use. By default the first RATIS/THREE "
           + "pipeline will be used.",
@@ -142,7 +148,7 @@ public class DatanodeChunkGenerator extends BaseFreonGenerator implements
 
     //Always use this fake blockid.
     DatanodeBlockID blockId = DatanodeBlockID.newBuilder()
-        .setContainerID((stepNo / 300_000) + 1)
+        .setContainerID((stepNo / 300_000) + 1 + offset)
         .setLocalID(stepNo % 20)
         .setBlockCommitSequenceId(stepNo)
         .build();
