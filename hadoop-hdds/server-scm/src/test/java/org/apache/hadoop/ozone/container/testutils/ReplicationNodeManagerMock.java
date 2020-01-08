@@ -183,6 +183,11 @@ public class ReplicationNodeManagerMock implements NodeManager {
     return nodeStateMap.get(dd);
   }
 
+  @Override
+  public Map<UUID, NodeStatus> getAllNodeStatus() {
+    return null;
+  }
+
   /**
    * Set the operation state of a node.
    * @param dd The datanode to set the new state for

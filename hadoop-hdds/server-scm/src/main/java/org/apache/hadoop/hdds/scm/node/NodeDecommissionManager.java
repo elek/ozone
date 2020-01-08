@@ -16,28 +16,36 @@
  */
 package org.apache.hadoop.hdds.scm.node;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos.NodeOperationalState;
+import org.apache.hadoop.hdds.protocol.proto.StorageContainerDatanodeProtocolProtos;
 import org.apache.hadoop.hdds.scm.ScmConfigKeys;
 import org.apache.hadoop.hdds.scm.container.ContainerManager;
+import org.apache.hadoop.hdds.scm.container.NodeReplicationReport;
 import org.apache.hadoop.hdds.scm.container.ReplicationManager;
 import org.apache.hadoop.hdds.scm.node.states.NodeNotFoundException;
+import org.apache.hadoop.hdds.scm.pipeline.Pipeline;
+import org.apache.hadoop.hdds.scm.pipeline.PipelineID;
+import org.apache.hadoop.hdds.scm.pipeline.PipelineManager;
+import org.apache.hadoop.hdds.scm.server.SCMDatanodeHeartbeatDispatcher;
+import org.apache.hadoop.hdds.server.events.EventHandler;
 import org.apache.hadoop.hdds.server.events.EventPublisher;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
+
+import static org.apache.hadoop.hdds.scm.server.SCMDatanodeHeartbeatDispatcher.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.UnknownHostException;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -45,10 +53,8 @@ import java.util.concurrent.TimeUnit;
  */
 public class NodeDecommissionManager {
 
-  private ScheduledExecutorService executor;
-  private DatanodeAdminMonitor monitor;
-
   private NodeManager nodeManager;
+  private PipelineManager pipelineManager;
   //private ContainerManager containerManager;
   private EventPublisher eventQueue;
   private ReplicationManager replicationManager;
@@ -58,6 +64,39 @@ public class NodeDecommissionManager {
 
   private static final Logger LOG =
       LoggerFactory.getLogger(NodeDecommissionManager.class);
+
+  public NodeDecommissionManager(OzoneConfiguration config, NodeManager nm,
+      ContainerManager containerManager,
+      PipelineManager pipelineManager,
+      EventPublisher eventQueue, ReplicationManager rm) {
+    this.nodeManager = nm;
+    conf = config;
+    //this.containerManager = containerManager;
+    this.eventQueue = eventQueue;
+    this.pipelineManager = pipelineManager;
+    this.replicationManager = rm;
+
+    useHostnames = conf.getBoolean(
+        DFSConfigKeys.DFS_DATANODE_USE_DN_HOSTNAME,
+        DFSConfigKeys.DFS_DATANODE_USE_DN_HOSTNAME_DEFAULT);
+
+    monitorInterval = conf.getTimeDuration(
+        ScmConfigKeys.OZONE_SCM_DATANODE_ADMIN_MONITOR_INTERVAL,
+        ScmConfigKeys.OZONE_SCM_DATANODE_ADMIN_MONITOR_INTERVAL_DEFAULT,
+        TimeUnit.SECONDS);
+    if (monitorInterval <= 0) {
+      LOG.warn("{} must be greater than zero, defaulting to {}",
+          ScmConfigKeys.OZONE_SCM_DATANODE_ADMIN_MONITOR_INTERVAL,
+          ScmConfigKeys.OZONE_SCM_DATANODE_ADMIN_MONITOR_INTERVAL_DEFAULT);
+      conf.set(ScmConfigKeys.OZONE_SCM_DATANODE_ADMIN_MONITOR_INTERVAL,
+          ScmConfigKeys.OZONE_SCM_DATANODE_ADMIN_MONITOR_INTERVAL_DEFAULT);
+      monitorInterval = conf.getTimeDuration(
+          ScmConfigKeys.OZONE_SCM_DATANODE_ADMIN_MONITOR_INTERVAL,
+          ScmConfigKeys.OZONE_SCM_DATANODE_ADMIN_MONITOR_INTERVAL_DEFAULT,
+          TimeUnit.SECONDS);
+    }
+
+  }
 
   static class HostDefinition {
     private String rawHostname;
@@ -81,20 +120,20 @@ public class NodeDecommissionManager {
       return port;
     }
 
-    private void parseHostname() throws InvalidHostStringException{
+    private void parseHostname() throws InvalidHostStringException {
       try {
         // A URI *must* have a scheme, so just create a fake one
-        URI uri = new URI("empty://"+rawHostname.trim());
+        URI uri = new URI("empty://" + rawHostname.trim());
         this.hostname = uri.getHost();
         this.port = uri.getPort();
 
         if (this.hostname == null) {
-          throw new InvalidHostStringException("The string "+rawHostname+
+          throw new InvalidHostStringException("The string " + rawHostname +
               " does not contain a value hostname or hostname:port definition");
         }
       } catch (URISyntaxException e) {
         throw new InvalidHostStringException(
-            "Unable to parse the hoststring "+rawHostname, e);
+            "Unable to parse the hoststring " + rawHostname, e);
       }
     }
   }
@@ -109,7 +148,7 @@ public class NodeDecommissionManager {
         addr = InetAddress.getByName(host.getHostname());
       } catch (UnknownHostException e) {
         throw new InvalidHostStringException("Unable to resolve the host "
-            +host.getRawHostname(), e);
+            + host.getRawHostname(), e);
       }
       String dnsName;
       if (useHostnames) {
@@ -120,19 +159,19 @@ public class NodeDecommissionManager {
       List<DatanodeDetails> found = nodeManager.getNodesByAddress(dnsName);
       if (found.size() == 0) {
         throw new InvalidHostStringException("The string " +
-            host.getRawHostname()+" resolved to "+dnsName +
+            host.getRawHostname() + " resolved to " + dnsName +
             " is not found in SCM");
       } else if (found.size() == 1) {
         if (host.getPort() != -1 &&
             !validateDNPortMatch(host.getPort(), found.get(0))) {
-          throw new InvalidHostStringException("The string "+
-              host.getRawHostname()+" matched a single datanode, but the "+
+          throw new InvalidHostStringException("The string " +
+              host.getRawHostname() + " matched a single datanode, but the " +
               "given port is not used by that Datanode");
         }
         results.add(found.get(0));
       } else if (found.size() > 1) {
         DatanodeDetails match = null;
-        for(DatanodeDetails dn : found) {
+        for (DatanodeDetails dn : found) {
           if (validateDNPortMatch(host.getPort(), dn)) {
             match = dn;
             break;
@@ -140,7 +179,7 @@ public class NodeDecommissionManager {
         }
         if (match == null) {
           throw new InvalidHostStringException("The string " +
-              host.getRawHostname()+ "matched multiple Datanodes, but no "+
+              host.getRawHostname() + "matched multiple Datanodes, but no " +
               "datanode port matched the given port");
         }
         results.add(match);
@@ -152,8 +191,9 @@ public class NodeDecommissionManager {
   /**
    * Check if the passed port is used by the given DatanodeDetails object. If
    * it is, return true, otherwise return false.
+   *
    * @param port Port number to check if it is used by the datanode
-   * @param dn Datanode to check if it is using the given port
+   * @param dn   Datanode to check if it is using the given port
    * @return True if port is used by the datanode. False otherwise.
    */
   private boolean validateDNPortMatch(int port, DatanodeDetails dn) {
@@ -163,51 +203,6 @@ public class NodeDecommissionManager {
       }
     }
     return false;
-  }
-
-  public NodeDecommissionManager(OzoneConfiguration config, NodeManager nm,
-      ContainerManager containerManager,
-      EventPublisher eventQueue, ReplicationManager rm) {
-    this.nodeManager = nm;
-    conf = config;
-    //this.containerManager = containerManager;
-    this.eventQueue = eventQueue;
-    this.replicationManager = rm;
-
-    executor = Executors.newScheduledThreadPool(1,
-        new ThreadFactoryBuilder().setNameFormat("DatanodeAdminManager-%d")
-            .setDaemon(true).build());
-
-    useHostnames = conf.getBoolean(
-        DFSConfigKeys.DFS_DATANODE_USE_DN_HOSTNAME,
-        DFSConfigKeys.DFS_DATANODE_USE_DN_HOSTNAME_DEFAULT);
-
-    monitorInterval = conf.getTimeDuration(
-        ScmConfigKeys.OZONE_SCM_DATANODE_ADMIN_MONITOR_INTERVAL,
-        ScmConfigKeys.OZONE_SCM_DATANODE_ADMIN_MONITOR_INTERVAL_DEFAULT,
-        TimeUnit.SECONDS);
-    if (monitorInterval <= 0) {
-      LOG.warn("{} must be greater than zero, defaulting to {}",
-          ScmConfigKeys.OZONE_SCM_DATANODE_ADMIN_MONITOR_INTERVAL,
-          ScmConfigKeys.OZONE_SCM_DATANODE_ADMIN_MONITOR_INTERVAL_DEFAULT);
-      conf.set(ScmConfigKeys.OZONE_SCM_DATANODE_ADMIN_MONITOR_INTERVAL,
-          ScmConfigKeys.OZONE_SCM_DATANODE_ADMIN_MONITOR_INTERVAL_DEFAULT);
-      monitorInterval = conf.getTimeDuration(
-          ScmConfigKeys.OZONE_SCM_DATANODE_ADMIN_MONITOR_INTERVAL,
-          ScmConfigKeys.OZONE_SCM_DATANODE_ADMIN_MONITOR_INTERVAL_DEFAULT,
-          TimeUnit.SECONDS);
-    }
-
-    monitor = new DatanodeAdminMonitorImpl(conf, eventQueue, nodeManager,
-        replicationManager);
-
-    executor.scheduleAtFixedRate(monitor, monitorInterval, monitorInterval,
-        TimeUnit.SECONDS);
-  }
-
-  @VisibleForTesting
-  public DatanodeAdminMonitor getMonitor() {
-    return monitor;
   }
 
   public synchronized void decommissionNodes(List nodes)
@@ -222,7 +217,7 @@ public class NodeDecommissionManager {
         // NodeNotFoundException here expect if the node is remove in the
         // very short window between validation and starting decom. Therefore
         // log a warning and ignore the exception
-        LOG.warn("The host {} was not found in SCM. Ignoring the request to "+
+        LOG.warn("The host {} was not found in SCM. Ignoring the request to " +
             "decommission it", dn.getHostName());
       } catch (InvalidNodeStateException e) {
         // TODO - decide how to handle this. We may not want to fail all nodes
@@ -241,14 +236,13 @@ public class NodeDecommissionManager {
       LOG.info("Starting Decommission for node {}", dn);
       nodeManager.setNodeOperationalState(
           dn, NodeOperationalState.DECOMMISSIONING);
-      monitor.startMonitoring(dn, 0);
     } else if (nodeStatus.isDecommission()) {
-      LOG.info("Start Decommission called on node {} in state {}. Nothing to "+
+      LOG.info("Start Decommission called on node {} in state {}. Nothing to " +
           "do.", dn, opState);
     } else {
       LOG.error("Cannot decommission node {} in state {}", dn, opState);
-      throw new InvalidNodeStateException("Cannot decommission node "+
-          dn +" in state "+ opState);
+      throw new InvalidNodeStateException("Cannot decommission node " +
+          dn + " in state " + opState);
     }
   }
 
@@ -264,23 +258,22 @@ public class NodeDecommissionManager {
         // NodeNotFoundException here expect if the node is remove in the
         // very short window between validation and starting decom. Therefore
         // log a warning and ignore the exception
-        LOG.warn("The host {} was not found in SCM. Ignoring the request to "+
+        LOG.warn("The host {} was not found in SCM. Ignoring the request to " +
             "recommission it", dn.getHostName());
       }
     }
   }
 
   public synchronized void recommission(DatanodeDetails dn)
-      throws NodeNotFoundException{
+      throws NodeNotFoundException {
     NodeStatus nodeStatus = getNodeStatus(dn);
     NodeOperationalState opState = nodeStatus.getOperationalState();
     if (opState != NodeOperationalState.IN_SERVICE) {
-      // The node will be set back to IN_SERVICE when it is processed by the
-      // monitor
-      monitor.stopMonitoring(dn);
+      nodeManager.setNodeOperationalState(
+          dn, NodeOperationalState.IN_SERVICE);
       LOG.info("Queued node {} for recommission", dn);
     } else {
-      LOG.info("Recommission called on node {} with state {}. "+
+      LOG.info("Recommission called on node {} with state {}. " +
           "Nothing to do.", dn, opState);
     }
   }
@@ -297,7 +290,7 @@ public class NodeDecommissionManager {
         // NodeNotFoundException here expect if the node is remove in the
         // very short window between validation and starting decom. Therefore
         // log a warning and ignore the exception
-        LOG.warn("The host {} was not found in SCM. Ignoring the request to "+
+        LOG.warn("The host {} was not found in SCM. Ignoring the request to " +
             "start maintenance on it", dn.getHostName());
       } catch (InvalidNodeStateException e) {
         // TODO - decide how to handle this. We may not want to fail all nodes
@@ -317,15 +310,14 @@ public class NodeDecommissionManager {
     if (opState == NodeOperationalState.IN_SERVICE) {
       nodeManager.setNodeOperationalState(
           dn, NodeOperationalState.ENTERING_MAINTENANCE);
-      monitor.startMonitoring(dn, endInHours);
       LOG.info("Starting Maintenance for node {}", dn);
     } else if (nodeStatus.isMaintenance()) {
-      LOG.info("Starting Maintenance called on node {} with state {}. "+
+      LOG.info("Starting Maintenance called on node {} with state {}. " +
           "Nothing to do.", dn, opState);
     } else {
       LOG.error("Cannot start maintenance on node {} in state {}", dn, opState);
-      throw new InvalidNodeStateException("Cannot start maintenance on node "+
-          dn +" in state "+ opState);
+      throw new InvalidNodeStateException("Cannot start maintenance on node " +
+          dn + " in state " + opState);
     }
   }
 
@@ -334,4 +326,80 @@ public class NodeDecommissionManager {
     return nodeManager.getNodeStatus(dn);
   }
 
+  public class PipelineReportHandler
+      implements EventHandler<PipelineReportFromDatanode> {
+    /**
+     * Process pipeline report. If the node is in decommissioning or in
+     * maintenance state the pipelines should be closed.
+     */
+    @Override
+    public void onMessage(
+        PipelineReportFromDatanode pipelineReportFromDatanode,
+        EventPublisher publisher) {
+
+      UUID uuid = pipelineReportFromDatanode.getDatanodeDetails().getUuid();
+      try {
+        NodeStatus nodeStatus = nodeManager
+            .getNodeStatus(pipelineReportFromDatanode.getDatanodeDetails());
+        if (nodeStatus.isInMaintenance()) {
+          for (StorageContainerDatanodeProtocolProtos.PipelineReport report :
+              pipelineReportFromDatanode
+                  .getReport().getPipelineReportList()) {
+            PipelineID pipelineID =
+                PipelineID.getFromProtobuf(report.getPipelineID());
+            Pipeline pipeline = pipelineManager.getPipeline(pipelineID);
+            if (pipeline.getPipelineState() == Pipeline.PipelineState.OPEN) {
+              pipelineManager.finalizeAndDestroyPipeline(pipeline, true);
+            }
+          }
+        }
+
+      } catch (NodeNotFoundException | IOException e) {
+        LOG.warn("Decommissioning manager can't process pipeline report", e);
+      }
+    }
+  }
+
+  public class ReplicationReportHandler
+      implements EventHandler<NodeReplicationReport> {
+
+    @Override
+    public void onMessage(NodeReplicationReport payload,
+        EventPublisher publisher) {
+      try {
+        if (payload.getNodeStatus().isDecommissioning() &&
+            payload.getSufficientlyReplicatedContainers() == payload
+                .getContainers()
+            && checkPipelinesClosedOnNode(payload.getDatanodeInfo())) {
+          //double check if all the pipelines are returned
+          nodeManager.setNodeOperationalState(payload.getDatanodeInfo(),
+              NodeOperationalState.DECOMMISSIONED);
+
+        } else if (payload.getNodeStatus().isEnteringMaintenance() &&
+            payload.getSufficientlyReplicatedContainers() == payload
+                .getContainers() &&
+            checkPipelinesClosedOnNode(payload.getDatanodeInfo())) {
+          nodeManager.setNodeOperationalState(payload.getDatanodeInfo(),
+              NodeOperationalState.IN_MAINTENANCE);
+        }
+      } catch (
+          NodeNotFoundException ex) {
+        LOG.warn("NodeReplicationReport is received for a non-existing node {}",
+            payload.getDatanodeInfo().getUuid(), ex);
+      }
+
+    }
+
+    private boolean checkPipelinesClosedOnNode(DatanodeDetails dn) {
+
+      Set<PipelineID> pipelines = nodeManager.getPipelines(dn);
+      if (pipelines == null || pipelines.size() == 0) {
+        return true;
+      } else {
+        LOG.debug("Waiting for pipelines to close for {}. There are {} " +
+            "pipelines", dn, pipelines.size());
+        return false;
+      }
+    }
+  }
 }

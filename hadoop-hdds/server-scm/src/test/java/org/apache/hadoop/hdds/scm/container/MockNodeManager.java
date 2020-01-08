@@ -268,6 +268,11 @@ public class MockNodeManager implements NodeManager {
     return null;
   }
 
+  @Override
+  public Map<UUID, NodeStatus> getAllNodeStatus() {
+    return null;
+  }
+
   /**
    * Set the operation state of a node.
    * @param datanodeDetails The datanode to set the new state for

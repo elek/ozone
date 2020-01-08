@@ -29,8 +29,8 @@ import java.util.Objects;
  */
 public class NodeStatus {
 
-  private HddsProtos.NodeOperationalState operationalState;
-  private HddsProtos.NodeState health;
+  private final HddsProtos.NodeOperationalState operationalState;
+  private final HddsProtos.NodeState health;
 
   public NodeStatus(HddsProtos.NodeOperationalState operationalState,
              HddsProtos.NodeState health) {

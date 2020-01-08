@@ -236,13 +236,43 @@ public class ReplicationManager implements MetricsSource {
         final long start = Time.monotonicNow();
         final Set<ContainerID> containerIds =
             containerManager.getContainerIDs();
-        containerIds.forEach(this::processContainer);
+
+        for (DatanodeDetails datanode : nodeManager.getAllNodes()) {
+          Map<UUID, NodeStatus> nodeStatusSnapshot =
+              nodeManager.getAllNodeStatus();
+
+          int sufficientlyReplicatedContainers = 0;
+
+          Set<ContainerID> allContainers = nodeManager.getContainers(datanode);
+          for (ContainerID containerId : allContainers) {
+            ContainerReplicaCount containerReplicaCount =
+                this.processContainer(nodeStatusSnapshot, containerId);
+
+            //update stats
+            if (containerReplicaCount != null && containerReplicaCount
+                .isSufficientlyReplicated()) {
+              sufficientlyReplicatedContainers++;
+            }
+
+          }
+
+          NodeReplicationReport nodeReplicationReport =
+              new NodeReplicationReport(datanode,
+                  nodeStatusSnapshot.get(datanode.getUuid()),
+                  allContainers.size(),
+                  sufficientlyReplicatedContainers);
+
+          eventPublisher.fireEvent(SCMEvents.NODE_REPLICATION_REPORT,
+              nodeReplicationReport);
+
+          wait(conf.getInterval());
+
+        }
 
         LOG.info("Replication Monitor Thread took {} milliseconds for" +
                 " processing {} containers.", Time.monotonicNow() - start,
             containerIds.size());
 
-        wait(conf.getInterval());
       }
     } catch (Throwable t) {
       // When we get runtime exception, we should terminate SCM.
@@ -254,9 +284,13 @@ public class ReplicationManager implements MetricsSource {
   /**
    * Process the given container.
    *
+   *
+   * @param nodeStatusSnapshot
    * @param id ContainerID
+   * @return
    */
-  private void processContainer(ContainerID id) {
+  private ContainerReplicaCount processContainer(
+      Map<UUID, NodeStatus> nodeStatusSnapshot, ContainerID id) {
     lockManager.writeLock(id);
     try {
       final ContainerInfo container = containerManager.getContainer(id);
@@ -268,7 +302,7 @@ public class ReplicationManager implements MetricsSource {
        * We don't take any action if the container is in OPEN state.
        */
       if (state == LifeCycleState.OPEN) {
-        return;
+        return null;
       }
 
       /*
@@ -279,7 +313,7 @@ public class ReplicationManager implements MetricsSource {
       if (state == LifeCycleState.CLOSING) {
         replicas.forEach(replica -> sendCloseCommand(
             container, replica.getDatanodeDetails(), false));
-        return;
+        return null;
       }
 
       /*
@@ -289,7 +323,7 @@ public class ReplicationManager implements MetricsSource {
       if (state == LifeCycleState.QUASI_CLOSED &&
           canForceCloseContainer(container, replicas)) {
         forceCloseContainer(container, replicas);
-        return;
+        return null;
       }
 
       /*
@@ -307,41 +341,44 @@ public class ReplicationManager implements MetricsSource {
           action -> replicas.stream()
               .noneMatch(r -> r.getDatanodeDetails().equals(action.datanode)));
 
-      ContainerReplicaCount replicaSet =
-          getContainerReplicaCount(container, replicas);
+      return getContainerReplicaCount(container, replicas, nodeStatusSnapshot);
+    } catch (ContainerNotFoundException ex) {
+      LOG.warn("Missing container {}.", id);
+    } finally {
+      lockManager.writeUnlock(id);
+    }
+    return null;
+  }
 
-      /*
-       * Check if the container is under replicated and take appropriate
-       * action.
-       */
-      if (!replicaSet.isSufficientlyReplicated()) {
-        handleUnderReplicatedContainer(container, replicaSet);
-        return;
-      }
+  protected void handleOverAndUnderReplication(ContainerInfo container,
+      ContainerReplicaCount replicaSet) {
+    /*
+     * Check if the container is under replicated and take appropriate
+     * action.
+     */
+    if (!replicaSet.isSufficientlyReplicated()) {
+      handleUnderReplicatedContainer(container, replicaSet);
+      return;
+    }
 
-      /*
-       * Check if the container is over replicated and take appropriate
-       * action.
-       */
-      if (replicaSet.isOverReplicated()) {
-        handleOverReplicatedContainer(container, replicaSet);
-        return;
-      }
+    /*
+     * Check if the container is over replicated and take appropriate
+     * action.
+     */
+    if (replicaSet.isOverReplicated()) {
+      handleOverReplicatedContainer(container, replicaSet);
+      return;
+    }
 
       /*
        If we get here, the container is not over replicated or under replicated
        but it may be "unhealthy", which means it has one or more replica which
        are not in the same state as the container itself.
        */
-      if (!replicaSet.isHealthy()) {
-        handleUnstableContainer(container, replicas);
-      }
-
-    } catch (ContainerNotFoundException ex) {
-      LOG.warn("Missing container {}.", id);
-    } finally {
-      lockManager.writeUnlock(id);
+    if (!replicaSet.isHealthy()) {
+      handleUnstableContainer(container, replicaSet.getReplica());
     }
+
   }
 
   /**
@@ -393,10 +430,11 @@ public class ReplicationManager implements MetricsSource {
    * @return ContainerReplicaCount for the given container
    * @throws ContainerNotFoundException
    */
-  public ContainerReplicaCount getContainerReplicaCount(ContainerID containerID)
+  public ContainerReplicaCount getContainerReplicaCount(ContainerID containerID,
+      Map<UUID, NodeStatus> nodeStatusSnapshot)
       throws ContainerNotFoundException {
     ContainerInfo container = containerManager.getContainer(containerID);
-    return getContainerReplicaCount(container);
+    return getContainerReplicaCount(container, nodeStatusSnapshot);
   }
 
   /**
@@ -411,13 +449,14 @@ public class ReplicationManager implements MetricsSource {
    *         container.
    * @throws ContainerNotFoundException
    */
-  public ContainerReplicaCount getContainerReplicaCount(ContainerInfo container)
+  public ContainerReplicaCount getContainerReplicaCount(ContainerInfo container,
+      Map<UUID, NodeStatus> nodeStatusSnapshot)
       throws ContainerNotFoundException {
     lockManager.readLock(container.containerID());
     try {
       final Set<ContainerReplica> replica = containerManager
           .getContainerReplicas(container.containerID());
-      return getContainerReplicaCount(container, replica);
+      return getContainerReplicaCount(container, replica, nodeStatusSnapshot);
     } finally {
       lockManager.readUnlock(container.containerID());
     }
@@ -434,9 +473,11 @@ public class ReplicationManager implements MetricsSource {
    *         container
    */
   private ContainerReplicaCount getContainerReplicaCount(
-      ContainerInfo container, Set<ContainerReplica> replica) {
+      ContainerInfo container, Set<ContainerReplica> replica,
+      Map<UUID, NodeStatus> nodeStatusSnapshot) {
     return new ContainerReplicaCount(
         container,
+        nodeStatusSnapshot,
         replica,
         getInflightAdd(container.containerID()),
         getInflightDel(container.containerID()),
@@ -507,7 +548,7 @@ public class ReplicationManager implements MetricsSource {
    * and send replicate container command to the identified datanode(s).
    *
    * @param container ContainerInfo
-   * @param replicaSet An instance of ContainerReplicaCount, containing the
+   * @param replicaSet An in`stan`ce of ContainerReplicaCount, containing the
    *                   current replica count and inflight adds and deletes
    */
   private void handleUnderReplicatedContainer(final ContainerInfo container,

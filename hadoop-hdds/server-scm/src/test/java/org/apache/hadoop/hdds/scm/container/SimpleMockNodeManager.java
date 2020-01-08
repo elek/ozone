@@ -98,6 +98,12 @@ public class SimpleMockNodeManager implements NodeManager {
   }
 
   @Override
+  public Map<UUID, NodeStatus> getAllNodeStatus() {
+    //TODO
+    return null;
+  }
+
+  @Override
   public void setNodeOperationalState(DatanodeDetails dn,
       HddsProtos.NodeOperationalState newState) throws NodeNotFoundException {
     DatanodeInfo dni = nodeMap.get(dn.getUuid());

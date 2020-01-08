@@ -21,6 +21,7 @@ package org.apache.hadoop.hdds.scm.events;
 
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
 import org.apache.hadoop.hdds.scm.block.PendingDeleteStatusList;
+import org.apache.hadoop.hdds.scm.container.NodeReplicationReport;
 import org.apache.hadoop.hdds.scm.pipeline.Pipeline;
 import org.apache.hadoop.hdds.scm.safemode.SCMSafeModeManager.SafeModeStatus;
 import org.apache.hadoop.hdds.scm.command.CommandStatusReportHandler;
@@ -201,6 +202,9 @@ public final class SCMEvents {
 
   public static final TypedEvent<SafeModeStatus> SAFE_MODE_STATUS =
       new TypedEvent<>(SafeModeStatus.class);
+
+  public static final TypedEvent<NodeReplicationReport>
+      NODE_REPLICATION_REPORT = new TypedEvent<>(NodeReplicationReport.class);
 
   /**
    * Private Ctor. Never Constructed.

@@ -20,7 +20,11 @@ package org.apache.hadoop.hdds.scm.container;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
 import org.apache.hadoop.hdds.protocol.proto
     .StorageContainerDatanodeProtocolProtos.ContainerReplicaProto;
+import org.apache.hadoop.hdds.scm.node.NodeStatus;
+
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * Immutable object that is created with a set of ContainerReplica objects and
@@ -42,6 +46,7 @@ public class ContainerReplicaCount {
   private Set<ContainerReplica> replica;
 
   public ContainerReplicaCount(ContainerInfo container,
+                               Map<UUID, NodeStatus> nodeStatusSnapshot,
                                Set<ContainerReplica> replica, int inFlightAdd,
                                int inFlightDelete, int replicationFactor,
                                int minHealthyForMaintenance) {
@@ -57,10 +62,10 @@ public class ContainerReplicaCount {
     this.container = container;
 
     for (ContainerReplica cr : this.replica) {
-      ContainerReplicaProto.State state = cr.getState();
-      if (state == ContainerReplicaProto.State.DECOMMISSIONED) {
+      NodeStatus nodeStatus = nodeStatusSnapshot.get(cr.getDatanodeDetails().getUuid());
+      if (nodeStatus.isDecommission()) {
         decommissionCount++;
-      } else if (state == ContainerReplicaProto.State.MAINTENANCE) {
+      } else if (nodeStatus.isInMaintenance()) {
         maintenanceCount++;
       } else {
         healthyCount++;

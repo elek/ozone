@@ -223,6 +223,15 @@ public class SCMNodeManager implements NodeManager {
     return nodeStateManager.getNodeStatus(datanodeDetails);
   }
 
+  @Override
+  public Map<UUID, NodeStatus> getAllNodeStatus() {
+    return nodeStateManager
+            .getAllNodes()
+            .stream()
+            .collect(Collectors.toMap(DatanodeDetails::getUuid, DatanodeInfo::getNodeStatus));
+  }
+
+
   /**
    * Set the operation state of a node.
    * @param datanodeDetails The datanode to set the new state for

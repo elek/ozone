@@ -38,6 +38,7 @@ public class DatanodeInfo extends DatanodeDetails {
   private final ReadWriteLock lock;
 
   private volatile long lastHeartbeatTime;
+
   private long lastStatsUpdatedTime;
 
   private List<StorageReportProto> storageReports;

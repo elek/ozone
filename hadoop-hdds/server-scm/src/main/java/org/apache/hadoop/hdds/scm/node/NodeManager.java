@@ -133,6 +133,14 @@ public interface NodeManager extends StorageContainerNodeProtocol,
   NodeStatus getNodeStatus(DatanodeDetails datanodeDetails)
       throws NodeNotFoundException;
 
+
+  /**
+   * Returns with a snapshot of the available nodes and node status
+   *
+   * @return Map with all the node status for each of the datanodes.
+   */
+  Map<UUID, NodeStatus> getAllNodeStatus();
+
   /**
    * Set the operation state of a node.
    * @param datanodeDetails The datanode to set the new state for
@@ -230,4 +238,5 @@ public interface NodeManager extends StorageContainerNodeProtocol,
    * @return the given datanode, or empty list if none found
    */
   List<DatanodeDetails> getNodesByAddress(String address);
+
 }

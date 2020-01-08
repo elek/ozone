@@ -340,7 +340,7 @@ public final class StorageContainerManager extends ServiceRuntimeInfoImpl
         pipelineManager);
 
     scmDecommissionManager = new NodeDecommissionManager(conf, scmNodeManager,
-        containerManager, eventQueue, replicationManager);
+        containerManager, pipelineManager, eventQueue, replicationManager);
 
     eventQueue.addHandler(SCMEvents.DATANODE_COMMAND, scmNodeManager);
     eventQueue.addHandler(SCMEvents.RETRIABLE_DATANODE_COMMAND, scmNodeManager);
@@ -364,7 +364,12 @@ public final class StorageContainerManager extends ServiceRuntimeInfoImpl
         (DeletedBlockLogImpl) scmBlockManager.getDeletedBlockLog());
     eventQueue.addHandler(SCMEvents.PIPELINE_ACTIONS, pipelineActionHandler);
     eventQueue.addHandler(SCMEvents.PIPELINE_REPORT, pipelineReportHandler);
+    eventQueue.addHandler(SCMEvents.PIPELINE_REPORT,
+        scmDecommissionManager.new PipelineReportHandler());
     eventQueue.addHandler(SCMEvents.SAFE_MODE_STATUS, safeModeHandler);
+    eventQueue.addHandler(SCMEvents.NODE_REPLICATION_REPORT,
+        scmDecommissionManager.new ReplicationReportHandler());
+
     registerMXBean();
     registerMetricsSource(this);
   }
