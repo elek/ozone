@@ -813,7 +813,6 @@ public abstract class TestOzoneRpcClientAbstract {
   }
 
 
-  @Ignore("Debug Jenkins Timeout")
   @Test
   public void testPutKeyRatisThreeNodesParallel() throws IOException,
       InterruptedException {
@@ -1298,10 +1297,7 @@ public abstract class TestOzoneRpcClientAbstract {
     key = bucket.getKey(toKeyName);
     Assert.assertEquals(toKeyName, key.getName());
   }
-
-  // Listing all volumes in the cluster feature has to be fixed after HDDS-357.
-  // TODO: fix this
-  @Ignore
+  
   @Test
   public void testListVolume() throws IOException {
     String volBase = "vol-" + RandomStringUtils.randomNumeric(3);
