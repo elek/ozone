@@ -95,6 +95,11 @@ public final class DFSConfigKeysLegacy {
   public static final String DFS_WEB_AUTHENTICATION_KERBEROS_KEYTAB_KEY =
       "dfs.web.authentication.kerberos.keytab";
 
+  public static final String HADOOP_SECURITY_DNS_INTERFACE_KEY =
+      "hadoop.security.dns.interface";
+
+  public static final String HADOOP_SECURITY_DNS_NAMESERVER_KEY =
+      "hadoop.security.dns.nameserver";
 }
 
 

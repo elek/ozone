@@ -20,6 +20,7 @@ package org.apache.hadoop.ozone.container.common.transport.server;
 
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails.Port.Name;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos;
@@ -77,7 +78,7 @@ public final class XceiverServerGrpc implements XceiverServerSpi {
    *
    * @param conf - Configuration
    */
-  public XceiverServerGrpc(DatanodeDetails datanodeDetails, Configuration conf,
+  public XceiverServerGrpc(DatanodeDetails datanodeDetails, ConfigurationSource conf,
       ContainerDispatcher dispatcher, CertificateClient caClient,
       BindableService... additionalServices) {
     Preconditions.checkNotNull(conf);

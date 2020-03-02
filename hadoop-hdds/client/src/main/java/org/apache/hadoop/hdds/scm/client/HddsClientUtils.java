@@ -32,7 +32,7 @@ import java.util.concurrent.TimeoutException;
 import org.apache.hadoop.hdds.annotation.InterfaceAudience;
 import org.apache.hadoop.hdds.annotation.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hdds.conf.OzoneConfiguration;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.conf.RatisClientConfig;
 import org.apache.hadoop.hdds.scm.container.common.helpers.StorageContainerException;
 import org.apache.hadoop.io.retry.RetryPolicies;
@@ -216,7 +216,7 @@ public final class HddsClientUtils {
    * @param conf Configuration object
    * @return list cache size
    */
-  public static int getListCacheSize(Configuration conf) {
+  public static int getListCacheSize(ConfigurationSource conf) {
     return conf.getInt(OzoneConfigKeys.OZONE_CLIENT_LIST_CACHE_SIZE,
         OzoneConfigKeys.OZONE_CLIENT_LIST_CACHE_SIZE_DEFAULT);
   }
@@ -265,9 +265,8 @@ public final class HddsClientUtils {
    * Returns the maximum no of outstanding async requests to be handled by
    * Standalone and Ratis client.
    */
-  public static int getMaxOutstandingRequests(Configuration config) {
-    return OzoneConfiguration.of(config)
-        .getObject(RatisClientConfig.class)
+  public static int getMaxOutstandingRequests(ConfigurationSource config) {
+    return config.getObject(RatisClientConfig.class)
         .getMaxOutstandingRequests();
   }
 

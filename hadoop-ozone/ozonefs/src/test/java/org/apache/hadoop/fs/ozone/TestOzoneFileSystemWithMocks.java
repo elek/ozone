@@ -17,11 +17,6 @@
  */
 package org.apache.hadoop.fs.ozone;
 
-import static org.junit.Assert.assertEquals;
-import static org.mockito.Matchers.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -38,8 +33,13 @@ import org.apache.hadoop.ozone.client.OzoneClient;
 import org.apache.hadoop.ozone.client.OzoneClientFactory;
 import org.apache.hadoop.ozone.client.OzoneVolume;
 import org.apache.hadoop.security.UserGroupInformation;
+
+import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
@@ -66,13 +66,15 @@ public class TestOzoneFileSystemWithMocks {
     assertEquals("bucket1.volume1.local.host:5899",
         ozfs.getUri().getAuthority());
     PowerMockito.verifyStatic();
-    OzoneClientFactory.getRpcClient("local.host", 5899, conf);
+    OzoneClientFactory.getRpcClient("local.host", 5899,
+        new CompatibleOzoneConfiguration(conf));
   }
 
   @Test
   public void testFSUriWithHostPortUnspecified() throws Exception {
     Configuration conf = new OzoneConfiguration();
-    final int omPort = OmUtils.getOmRpcPort(conf);
+    final int omPort =
+        OmUtils.getOmRpcPort(new CompatibleOzoneConfiguration(conf));
     mockClientFactory(conf, omPort);
     mockUser();
 
@@ -85,7 +87,8 @@ public class TestOzoneFileSystemWithMocks {
     assertEquals(ozfs.getUri().getPort(), -1);
     PowerMockito.verifyStatic();
     // Check the actual port number in use
-    OzoneClientFactory.getRpcClient("local.host", omPort, conf);
+    OzoneClientFactory.getRpcClient("local.host", omPort,
+        new CompatibleOzoneConfiguration(conf));
   }
 
   @Test
@@ -100,7 +103,7 @@ public class TestOzoneFileSystemWithMocks {
 
     assertEquals("bucket1.volume1", ozfs.getUri().getAuthority());
     PowerMockito.verifyStatic();
-    OzoneClientFactory.getRpcClient(conf);
+    OzoneClientFactory.getRpcClient(new CompatibleOzoneConfiguration(conf));
   }
 
   @Test
@@ -150,14 +153,16 @@ public class TestOzoneFileSystemWithMocks {
 
     PowerMockito.mockStatic(OzoneClientFactory.class);
     PowerMockito.when(OzoneClientFactory.getRpcClient(eq("local.host"),
-        eq(omPort), eq(conf))).thenReturn(ozoneClient);
+        eq(omPort), eq(new CompatibleOzoneConfiguration(conf))))
+        .thenReturn(ozoneClient);
   }
 
   private void mockClientFactory(Configuration conf) throws IOException {
     OzoneClient ozoneClient = mockClient();
 
     PowerMockito.mockStatic(OzoneClientFactory.class);
-    PowerMockito.when(OzoneClientFactory.getRpcClient(eq(conf)))
+    PowerMockito.when(OzoneClientFactory
+        .getRpcClient(eq(new CompatibleOzoneConfiguration(conf))))
         .thenReturn(ozoneClient);
   }
 

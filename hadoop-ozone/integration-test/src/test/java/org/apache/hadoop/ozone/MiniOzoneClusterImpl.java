@@ -323,7 +323,7 @@ public class MiniOzoneClusterImpl implements MiniOzoneCluster {
     datanodeService.stop();
     datanodeService.join();
     // ensure same ports are used across restarts.
-    OzoneConfiguration config = datanodeService.getConf();
+    OzoneConfiguration config = (OzoneConfiguration) datanodeService.getConf();
     int currentPort = datanodeService.getDatanodeDetails()
         .getPort(DatanodeDetails.Port.Name.STANDALONE).getValue();
     config.setInt(DFS_CONTAINER_IPC_PORT, currentPort);

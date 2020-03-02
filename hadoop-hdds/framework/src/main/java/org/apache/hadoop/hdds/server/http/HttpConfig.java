@@ -17,10 +17,9 @@
  */
 package org.apache.hadoop.hdds.server.http;
 
-import org.apache.hadoop.HadoopIllegalArgumentException;
 import org.apache.hadoop.hdds.annotation.InterfaceAudience;
 import org.apache.hadoop.hdds.annotation.InterfaceStability;
-import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.ozone.OzoneConfigKeys;
 
 /**
@@ -61,12 +60,13 @@ public final class HttpConfig {
     }
   }
 
-  public static Policy getHttpPolicy(Configuration conf) {
+  public static Policy getHttpPolicy(ConfigurationSource conf) {
+    //default is HTTP
     String policyStr = conf.get(OzoneConfigKeys.OZONE_HTTP_POLICY_KEY,
-        OzoneConfigKeys.OZONE_HTTP_POLICY_DEFAULT);
+        Policy.HTTP_ONLY.toString());
     HttpConfig.Policy policy = HttpConfig.Policy.fromString(policyStr);
     if (policy == null) {
-      throw new HadoopIllegalArgumentException("Unregonized value '"
+      throw new IllegalArgumentException("Unrecognized value '"
           + policyStr + "' for " + OzoneConfigKeys.OZONE_HTTP_POLICY_KEY);
     }
     conf.set(OzoneConfigKeys.OZONE_HTTP_POLICY_KEY, policy.name());

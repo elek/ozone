@@ -30,9 +30,10 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.conf.StorageUnit;
+import org.apache.hadoop.hdds.HddsUtils;
 import org.apache.hadoop.hdds.client.BlockID;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
+import org.apache.hadoop.hdds.conf.StorageUnit;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos
     .ContainerDataProto.State;
@@ -120,7 +121,7 @@ public class KeyValueHandler extends Handler {
   private final AutoCloseableLock containerCreationLock;
   private final boolean doSyncWrite;
 
-  public KeyValueHandler(Configuration config, String datanodeId,
+  public KeyValueHandler(ConfigurationSource config, String datanodeId,
       ContainerSet contSet, VolumeSet volSet, ContainerMetrics metrics,
       Consumer<ContainerReplicaProto> icrSender) {
     super(config, datanodeId, contSet, volSet, metrics, icrSender);
@@ -130,9 +131,10 @@ public class KeyValueHandler extends Handler {
         conf.getBoolean(OzoneConfigKeys.DFS_CONTAINER_CHUNK_WRITE_SYNC_KEY,
             OzoneConfigKeys.DFS_CONTAINER_CHUNK_WRITE_SYNC_DEFAULT);
     chunkManager = ChunkManagerFactory.getChunkManager(config, doSyncWrite);
-    volumeChoosingPolicy = ReflectionUtils.newInstance(conf.getClass(
+    Class<?> aClass = conf.getClass(
         HDDS_DATANODE_VOLUME_CHOOSING_POLICY, RoundRobinVolumeChoosingPolicy
-            .class, VolumeChoosingPolicy.class), conf);
+            .class, VolumeChoosingPolicy.class);
+    volumeChoosingPolicy = (VolumeChoosingPolicy) HddsUtils.newInstance(aClass);
     maxContainerSize = (long)config.getStorageSize(
         ScmConfigKeys.OZONE_SCM_CONTAINER_SIZE,
             ScmConfigKeys.OZONE_SCM_CONTAINER_SIZE_DEFAULT, StorageUnit.BYTES);
@@ -899,8 +901,7 @@ public class KeyValueHandler extends Handler {
         new KeyValueContainerData(containerID,
             maxSize, originPipelineId, originNodeId);
 
-    KeyValueContainer container = new KeyValueContainer(containerData,
-        conf);
+    KeyValueContainer container = new KeyValueContainer(containerData, conf);
 
     populateContainerPathFields(container, maxSize);
     container.importContainerData(rawContainerStream, packer);

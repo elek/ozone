@@ -20,7 +20,7 @@ package org.apache.hadoop.ozone.container.common.interfaces;
 
 import com.google.common.collect.Maps;
 
-import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos;
 import org.apache.hadoop.ozone.container.common.helpers.ContainerMetrics;
@@ -49,7 +49,7 @@ public class TestHandler {
   @Rule
   public TestRule timeout = new Timeout(300000);
 
-  private Configuration conf;
+  private OzoneConfiguration conf;
   private HddsDispatcher dispatcher;
   private ContainerSet containerSet;
   private VolumeSet volumeSet;
@@ -57,7 +57,7 @@ public class TestHandler {
 
   @Before
   public void setup() throws Exception {
-    this.conf = new Configuration();
+    this.conf = new OzoneConfiguration();
     this.containerSet = Mockito.mock(ContainerSet.class);
     this.volumeSet = Mockito.mock(VolumeSet.class);
     DatanodeDetails datanodeDetails = Mockito.mock(DatanodeDetails.class);

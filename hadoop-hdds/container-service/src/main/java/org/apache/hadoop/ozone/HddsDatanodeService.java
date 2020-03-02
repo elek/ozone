@@ -23,22 +23,19 @@ import java.net.InetAddress;
 import java.security.KeyPair;
 import java.security.cert.CertificateException;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.hadoop.conf.Configurable;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdds.DFSConfigKeysLegacy;
-import org.apache.hadoop.hdds.HddsUtils;
 import org.apache.hadoop.hdds.cli.GenericCli;
 import org.apache.hadoop.hdds.cli.HddsVersionProvider;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
 import org.apache.hadoop.hdds.protocol.proto.SCMSecurityProtocolProtos.SCMGetCertResponseProto;
 import org.apache.hadoop.hdds.protocolPB.SCMSecurityProtocolClientSideTranslatorPB;
-import org.apache.hadoop.hdds.utils.HddsServerUtil;
 import org.apache.hadoop.hdds.scm.ScmConfigKeys;
 import org.apache.hadoop.hdds.security.x509.SecurityConfig;
 import org.apache.hadoop.hdds.security.x509.certificate.client.CertificateClient;
@@ -46,6 +43,7 @@ import org.apache.hadoop.hdds.security.x509.certificate.client.DNCertificateClie
 import org.apache.hadoop.hdds.security.x509.certificates.utils.CertificateSignRequest;
 import org.apache.hadoop.hdds.server.http.RatisDropwizardExports;
 import org.apache.hadoop.hdds.tracing.TracingUtil;
+import org.apache.hadoop.hdds.utils.HddsServerUtil;
 import org.apache.hadoop.ozone.container.common.helpers.ContainerUtils;
 import org.apache.hadoop.ozone.container.common.statemachine.DatanodeStateMachine;
 import org.apache.hadoop.ozone.container.common.utils.HddsVolumeUtil;
@@ -62,7 +60,6 @@ import com.google.common.base.Preconditions;
 import io.prometheus.client.CollectorRegistry;
 import static org.apache.hadoop.hdds.security.x509.certificate.utils.CertificateCodec.getX509Certificate;
 import static org.apache.hadoop.hdds.security.x509.certificates.utils.CertificateSignRequest.getEncodedString;
-import static org.apache.hadoop.ozone.OzoneConfigKeys.HDDS_DATANODE_PLUGINS_KEY;
 import static org.apache.hadoop.util.ExitUtil.terminate;
 import org.apache.ratis.metrics.MetricRegistries;
 import org.apache.ratis.metrics.MetricsReporting;
@@ -87,7 +84,6 @@ public class HddsDatanodeService extends GenericCli implements ServicePlugin {
   private OzoneConfiguration conf;
   private DatanodeDetails datanodeDetails;
   private DatanodeStateMachine datanodeStateMachine;
-  private List<ServicePlugin> plugins;
   private CertificateClient dnCertClient;
   private String component;
   private HddsDatanodeHttpServer httpServer;
@@ -193,7 +189,7 @@ public class HddsDatanodeService extends GenericCli implements ServicePlugin {
     OzoneConfiguration.activate();
     HddsServerUtil.initializeMetrics(conf, "HddsDatanode");
     try {
-      String hostname = HddsUtils.getHostName(conf);
+      String hostname = HddsServerUtil.getHostName(conf);
       String ip = InetAddress.getByName(hostname).getHostAddress();
       datanodeDetails = initializeDatanodeDetails();
       datanodeDetails.setHostName(hostname);
@@ -209,22 +205,24 @@ public class HddsDatanodeService extends GenericCli implements ServicePlugin {
         dnCertClient = new DNCertificateClient(new SecurityConfig(conf),
             datanodeDetails.getCertSerialId());
 
-        if (SecurityUtil.getAuthenticationMethod(conf).equals(
+        if (HddsServerUtil.getAuthenticationMethod(conf).equals(
             UserGroupInformation.AuthenticationMethod.KERBEROS)) {
           LOG.info("Ozone security is enabled. Attempting login for Hdds " +
                   "Datanode user. Principal: {},keytab: {}", conf.get(
               DFSConfigKeysLegacy.DFS_DATANODE_KERBEROS_PRINCIPAL_KEY),
               conf.get(DFSConfigKeysLegacy.DFS_DATANODE_KEYTAB_FILE_KEY));
 
-          UserGroupInformation.setConfiguration(conf);
+          UserGroupInformation.setConfiguration(
+              HddsServerUtil.getLegacyHadoopConfiguration(conf));
 
           SecurityUtil
               .login(conf, DFSConfigKeysLegacy.DFS_DATANODE_KEYTAB_FILE_KEY,
                   DFSConfigKeysLegacy.DFS_DATANODE_KERBEROS_PRINCIPAL_KEY,
                   hostname);
         } else {
-          throw new AuthenticationException(SecurityUtil.
-              getAuthenticationMethod(conf) + " authentication method not " +
+          throw new AuthenticationException(
+              HddsServerUtil.getAuthenticationMethod(conf)
+                  + " authentication method not " +
               "supported. Datanode user" + " login " + "failed.");
         }
         LOG.info("Hdds Datanode login successful.");
@@ -240,7 +238,6 @@ public class HddsDatanodeService extends GenericCli implements ServicePlugin {
       } catch (Exception ex) {
         LOG.error("HttpServer failed to start.", ex);
       }
-      startPlugins();
       // Starting HDDS Daemons
       datanodeStateMachine.startDaemon();
 
@@ -291,7 +288,7 @@ public class HddsDatanodeService extends GenericCli implements ServicePlugin {
    * Initializes secure Datanode.
    * */
   @VisibleForTesting
-  public void initializeCertificateClient(OzoneConfiguration config)
+  public void initializeCertificateClient(ConfigurationSource config)
       throws IOException {
     LOG.info("Initializing secure Datanode.");
 
@@ -324,7 +321,7 @@ public class HddsDatanodeService extends GenericCli implements ServicePlugin {
    * Get SCM signed certificate and store it using certificate client.
    * @param config
    * */
-  private void getSCMSignedCert(OzoneConfiguration config) {
+  private void getSCMSignedCert(ConfigurationSource config) {
     try {
       PKCS10CertificationRequest csr = getCSR(config);
       // TODO: For SCM CA we should fetch certificate from multiple SCMs.
@@ -357,7 +354,7 @@ public class HddsDatanodeService extends GenericCli implements ServicePlugin {
    * @param config
    * */
   @VisibleForTesting
-  public PKCS10CertificationRequest getCSR(Configuration config)
+  public PKCS10CertificationRequest getCSR(ConfigurationSource config)
       throws IOException {
     CertificateSignRequest.Builder builder = dnCertClient.getCSRBuilder();
     KeyPair keyPair = new KeyPair(dnCertClient.getPublicKey(),
@@ -430,37 +427,13 @@ public class HddsDatanodeService extends GenericCli implements ServicePlugin {
     ContainerUtils.writeDatanodeDetailsTo(dnDetails, idFile);
   }
 
-  /**
-   * Starts all the service plugins which are configured using
-   * OzoneConfigKeys.HDDS_DATANODE_PLUGINS_KEY.
-   */
-  private void startPlugins() {
-    try {
-      plugins = conf.getInstances(HDDS_DATANODE_PLUGINS_KEY,
-          ServicePlugin.class);
-    } catch (RuntimeException e) {
-      String pluginsValue = conf.get(HDDS_DATANODE_PLUGINS_KEY);
-      LOG.error("Unable to load HDDS DataNode plugins. " +
-              "Specified list of plugins: {}",
-          pluginsValue, e);
-      throw e;
-    }
-    for (ServicePlugin plugin : plugins) {
-      try {
-        plugin.start(this);
-        LOG.info("Started plug-in {}", plugin);
-      } catch (Throwable t) {
-        LOG.warn("ServicePlugin {} could not be started", plugin, t);
-      }
-    }
-  }
 
   /**
    * Returns the OzoneConfiguration used by this HddsDatanodeService.
    *
    * @return OzoneConfiguration
    */
-  public OzoneConfiguration getConf() {
+  public ConfigurationSource getConf() {
     return conf;
   }
 
@@ -500,16 +473,6 @@ public class HddsDatanodeService extends GenericCli implements ServicePlugin {
   public void stop() {
     if (!isStopped.get()) {
       isStopped.set(true);
-      if (plugins != null) {
-        for (ServicePlugin plugin : plugins) {
-          try {
-            plugin.stop();
-            LOG.info("Stopped plug-in {}", plugin);
-          } catch (Throwable t) {
-            LOG.warn("ServicePlugin {} could not be stopped", plugin, t);
-          }
-        }
-      }
       if (datanodeStateMachine != null) {
         datanodeStateMachine.stopDaemon();
       }
@@ -525,15 +488,7 @@ public class HddsDatanodeService extends GenericCli implements ServicePlugin {
 
   @Override
   public void close() {
-    if (plugins != null) {
-      for (ServicePlugin plugin : plugins) {
-        try {
-          plugin.close();
-        } catch (Throwable t) {
-          LOG.warn("ServicePlugin {} could not be closed", plugin, t);
-        }
-      }
-    }
+
   }
 
   @VisibleForTesting

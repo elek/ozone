@@ -33,8 +33,9 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
+;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
 
-import org.apache.hadoop.conf.Configuration;
 import static org.apache.hadoop.hdds.scm.net.NetConstants.ROOT;
 import static org.apache.hadoop.hdds.scm.net.NetConstants.SCOPE_REVERSE_STR;
 import static org.apache.hadoop.hdds.scm.net.NetConstants.ANCESTOR_GENERATION_DEFAULT;
@@ -60,7 +61,7 @@ public class NetworkTopologyImpl implements NetworkTopology{
   /** Lock to coordinate cluster tree access. */
   private ReadWriteLock netlock = new ReentrantReadWriteLock(true);
 
-  public NetworkTopologyImpl(Configuration conf) {
+  public NetworkTopologyImpl(ConfigurationSource conf) {
     schemaManager = NodeSchemaManager.getInstance();
     schemaManager.init(conf);
     maxLevel = schemaManager.getMaxLevel();

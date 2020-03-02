@@ -18,32 +18,25 @@
 
 package org.apache.hadoop.ozone.container.common.states.endpoint;
 
-import com.google.common.base.Preconditions;
-import com.google.protobuf.Descriptors;
-import com.google.protobuf.GeneratedMessage;
-import org.apache.hadoop.conf.Configuration;
+import java.io.IOException;
+import java.time.ZonedDateTime;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.concurrent.Callable;
+
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos.DatanodeDetailsProto;
-import org.apache.hadoop.hdds.protocol.proto
-    .StorageContainerDatanodeProtocolProtos.PipelineActionsProto;
-import org.apache.hadoop.hdds.protocol.proto
-    .StorageContainerDatanodeProtocolProtos.PipelineAction;
-import org.apache.hadoop.hdds.protocol.proto
-    .StorageContainerDatanodeProtocolProtos.ContainerActionsProto;
-import org.apache.hadoop.hdds.protocol.proto
-    .StorageContainerDatanodeProtocolProtos.ContainerAction;
-import org.apache.hadoop.hdds.protocol.proto
-    .StorageContainerDatanodeProtocolProtos.SCMHeartbeatRequestProto;
-import org.apache.hadoop.hdds.protocol.proto
-    .StorageContainerDatanodeProtocolProtos.SCMCommandProto;
-import org.apache.hadoop.hdds.protocol.proto
-    .StorageContainerDatanodeProtocolProtos.SCMHeartbeatResponseProto;
-import org.apache.hadoop.ozone.container.common.helpers
-    .DeletedContainerBlocksSummary;
-import org.apache.hadoop.ozone.container.common.statemachine
-    .EndpointStateMachine;
-import org.apache.hadoop.ozone.container.common.statemachine
-    .EndpointStateMachine.EndPointStates;
+import org.apache.hadoop.hdds.protocol.proto.StorageContainerDatanodeProtocolProtos.ContainerAction;
+import org.apache.hadoop.hdds.protocol.proto.StorageContainerDatanodeProtocolProtos.ContainerActionsProto;
+import org.apache.hadoop.hdds.protocol.proto.StorageContainerDatanodeProtocolProtos.PipelineAction;
+import org.apache.hadoop.hdds.protocol.proto.StorageContainerDatanodeProtocolProtos.PipelineActionsProto;
+import org.apache.hadoop.hdds.protocol.proto.StorageContainerDatanodeProtocolProtos.SCMCommandProto;
+import org.apache.hadoop.hdds.protocol.proto.StorageContainerDatanodeProtocolProtos.SCMHeartbeatRequestProto;
+import org.apache.hadoop.hdds.protocol.proto.StorageContainerDatanodeProtocolProtos.SCMHeartbeatResponseProto;
+import org.apache.hadoop.ozone.container.common.helpers.DeletedContainerBlocksSummary;
+import org.apache.hadoop.ozone.container.common.statemachine.EndpointStateMachine;
+import org.apache.hadoop.ozone.container.common.statemachine.EndpointStateMachine.EndPointStates;
 import org.apache.hadoop.ozone.container.common.statemachine.StateContext;
 import org.apache.hadoop.ozone.protocol.commands.CloseContainerCommand;
 import org.apache.hadoop.ozone.protocol.commands.ClosePipelineCommand;
@@ -52,23 +45,15 @@ import org.apache.hadoop.ozone.protocol.commands.DeleteBlocksCommand;
 import org.apache.hadoop.ozone.protocol.commands.DeleteContainerCommand;
 import org.apache.hadoop.ozone.protocol.commands.ReplicateContainerCommand;
 
+import com.google.common.base.Preconditions;
+import com.google.protobuf.Descriptors;
+import com.google.protobuf.GeneratedMessage;
+import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_CONTAINER_ACTION_MAX_LIMIT;
+import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_CONTAINER_ACTION_MAX_LIMIT_DEFAULT;
+import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_PIPELINE_ACTION_MAX_LIMIT;
+import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_PIPELINE_ACTION_MAX_LIMIT_DEFAULT;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.time.ZonedDateTime;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.concurrent.Callable;
-
-import static org.apache.hadoop.hdds.HddsConfigKeys
-    .HDDS_CONTAINER_ACTION_MAX_LIMIT;
-import static org.apache.hadoop.hdds.HddsConfigKeys
-    .HDDS_CONTAINER_ACTION_MAX_LIMIT_DEFAULT;
-import static org.apache.hadoop.hdds.HddsConfigKeys
-    .HDDS_PIPELINE_ACTION_MAX_LIMIT;
-import static org.apache.hadoop.hdds.HddsConfigKeys
-    .HDDS_PIPELINE_ACTION_MAX_LIMIT_DEFAULT;
 
 /**
  * Heartbeat class for SCMs.
@@ -78,7 +63,7 @@ public class HeartbeatEndpointTask
   static final Logger LOG =
       LoggerFactory.getLogger(HeartbeatEndpointTask.class);
   private final EndpointStateMachine rpcEndpoint;
-  private final Configuration conf;
+  private final ConfigurationSource conf;
   private DatanodeDetailsProto datanodeDetailsProto;
   private StateContext context;
   private int maxContainerActionsPerHB;
@@ -90,7 +75,7 @@ public class HeartbeatEndpointTask
    * @param conf Config.
    */
   public HeartbeatEndpointTask(EndpointStateMachine rpcEndpoint,
-      Configuration conf, StateContext context) {
+      ConfigurationSource conf, StateContext context) {
     this.rpcEndpoint = rpcEndpoint;
     this.conf = conf;
     this.context = context;
@@ -344,7 +329,7 @@ public class HeartbeatEndpointTask
    */
   public static class Builder {
     private EndpointStateMachine endPointStateMachine;
-    private Configuration conf;
+    private ConfigurationSource conf;
     private DatanodeDetails datanodeDetails;
     private StateContext context;
 
@@ -371,7 +356,7 @@ public class HeartbeatEndpointTask
      * @param config - config
      * @return Builder
      */
-    public Builder setConfig(Configuration config) {
+    public Builder setConfig(ConfigurationSource config) {
       this.conf = config;
       return this;
     }

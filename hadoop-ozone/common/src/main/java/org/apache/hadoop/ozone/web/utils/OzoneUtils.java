@@ -29,7 +29,7 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.hadoop.hdds.annotation.InterfaceAudience;
-import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.scm.client.HddsClientUtils;
 import org.apache.hadoop.ozone.OzoneConsts;
 
@@ -148,18 +148,19 @@ public final class OzoneUtils {
    * Return the TimeDuration configured for the given key. If not configured,
    * return the default value.
    */
-  public static TimeDuration getTimeDuration(Configuration conf, String key,
+  public static TimeDuration getTimeDuration(ConfigurationSource conf,
+      String key,
       TimeDuration defaultValue) {
     TimeUnit defaultTimeUnit = defaultValue.getUnit();
     long timeDurationInDefaultUnit = conf.getTimeDuration(key,
-        defaultValue.getDuration(), defaultTimeUnit);
+        defaultValue.getDuration() + "ms", defaultTimeUnit);
     return TimeDuration.valueOf(timeDurationInDefaultUnit, defaultTimeUnit);
   }
 
   /**
    * Return the time configured for the given key in milliseconds.
    */
-  public static long getTimeDurationInMS(Configuration conf, String key,
+  public static long getTimeDurationInMS(ConfigurationSource conf, String key,
       TimeDuration defaultValue) {
     return getTimeDuration(conf, key, defaultValue)
         .toLong(TimeUnit.MILLISECONDS);

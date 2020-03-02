@@ -60,7 +60,7 @@ import static org.mockito.Mockito.when;
 @RunWith(Parameterized.class)
 public class TestSCMContainerPlacementRackAware {
   private NetworkTopology cluster;
-  private Configuration conf;
+  private OzoneConfiguration conf;
   private NodeManager nodeManager;
   private Integer datanodeCount;
   private List<DatanodeDetails> datanodes = new ArrayList<>();

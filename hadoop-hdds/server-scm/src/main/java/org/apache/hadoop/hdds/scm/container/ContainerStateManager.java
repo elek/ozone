@@ -29,8 +29,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.conf.StorageUnit;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
+import org.apache.hadoop.hdds.conf.StorageUnit;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos.LifeCycleEvent;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos.LifeCycleState;
@@ -131,7 +131,7 @@ public class ContainerStateManager {
    * TODO : Add Container Tags so we know which containers are owned by SCM.
    */
   @SuppressWarnings("unchecked")
-  public ContainerStateManager(final Configuration configuration) {
+  public ContainerStateManager(final ConfigurationSource configuration) {
 
     // Initialize the container state machine.
     final Set<HddsProtos.LifeCycleState> finalStates = new HashSet();

@@ -17,6 +17,7 @@
 package org.apache.hadoop.ozone.container.common.statemachine.commandhandler;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
 import org.apache.hadoop.hdds.protocol.proto.
@@ -55,14 +56,14 @@ public class CreatePipelineCommandHandler implements CommandHandler {
       LoggerFactory.getLogger(CreatePipelineCommandHandler.class);
 
   private final AtomicLong invocationCount = new AtomicLong(0);
-  private final Configuration conf;
+  private final ConfigurationSource conf;
 
   private long totalTime;
 
   /**
    * Constructs a createPipelineCommand handler.
    */
-  public CreatePipelineCommandHandler(Configuration conf) {
+  public CreatePipelineCommandHandler(ConfigurationSource conf) {
     this.conf = conf;
   }
 

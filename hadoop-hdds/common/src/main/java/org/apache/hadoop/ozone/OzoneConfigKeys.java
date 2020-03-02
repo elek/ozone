@@ -24,7 +24,6 @@ import org.apache.hadoop.hdds.client.ReplicationFactor;
 import org.apache.hadoop.hdds.client.ReplicationType;
 import org.apache.hadoop.hdds.scm.ScmConfigKeys;
 
-import org.apache.hadoop.http.HttpConfig;
 import org.apache.ratis.proto.RaftProtos.ReplicationLevel;
 import org.apache.ratis.util.TimeDuration;
 
@@ -427,8 +426,7 @@ public final class OzoneConfigKeys {
 
   public static final String OZONE_HTTP_POLICY_KEY =
       "ozone.http.policy";
-  public static final String OZONE_HTTP_POLICY_DEFAULT =
-      HttpConfig.Policy.HTTP_ONLY.name();
+
   public static final String  OZONE_SERVER_HTTPS_KEYSTORE_RESOURCE_KEY =
       "ozone.https.server.keystore.resource";
   public static final String  OZONE_SERVER_HTTPS_KEYSTORE_RESOURCE_DEFAULT =

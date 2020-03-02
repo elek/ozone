@@ -18,19 +18,17 @@
 
 package org.apache.hadoop.ozone.om.lock;
 
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.ozone.lock.LockManager;
 
-import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_MANAGER_FAIR_LOCK_DEFAULT;
 import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_MANAGER_FAIR_LOCK;
+import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_MANAGER_FAIR_LOCK_DEFAULT;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Provides different locks to handle concurrency in OzoneMaster.
@@ -91,7 +89,7 @@ public class OzoneManagerLock {
    * Creates new OzoneManagerLock instance.
    * @param conf Configuration object
    */
-  public OzoneManagerLock(Configuration conf) {
+  public OzoneManagerLock(ConfigurationSource conf) {
     boolean fair = conf.getBoolean(OZONE_MANAGER_FAIR_LOCK,
         OZONE_MANAGER_FAIR_LOCK_DEFAULT);
     manager = new LockManager<>(conf, fair);

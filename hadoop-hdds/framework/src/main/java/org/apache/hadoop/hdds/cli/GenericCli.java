@@ -21,8 +21,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.Callable;
 
-import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 
 import com.google.common.annotations.VisibleForTesting;
 import picocli.CommandLine;
@@ -33,7 +33,8 @@ import picocli.CommandLine.RunLast;
 /**
  * This is a generic parent class for all the ozone related cli tools.
  */
-public class GenericCli implements Callable<Void>, GenericParentCommand {
+public abstract class GenericCli
+    implements Callable<Void>, GenericParentCommand {
 
   @Option(names = {"--verbose"},
       description = "More verbose output. Show the stack trace of the errors.")

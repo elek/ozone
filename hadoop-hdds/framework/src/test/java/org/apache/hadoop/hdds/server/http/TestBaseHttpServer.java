@@ -17,7 +17,8 @@
  */
 package org.apache.hadoop.hdds.server.http;
 
-import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
+import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -28,7 +29,7 @@ import org.junit.Test;
 public class TestBaseHttpServer {
   @Test
   public void getBindAddress() throws Exception {
-    Configuration conf = new Configuration();
+    ConfigurationSource conf = new OzoneConfiguration();
     conf.set("enabled", "false");
 
     BaseHttpServer baseHttpServer = new BaseHttpServer(conf, "test") {

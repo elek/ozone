@@ -18,6 +18,7 @@ package org.apache.hadoop.ozone.container.common.states.datanode;
 
 import com.google.common.base.Strings;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
 import org.apache.hadoop.hdds.utils.HddsServerUtil;
 import org.apache.hadoop.hdds.scm.ScmConfigKeys;
@@ -52,7 +53,7 @@ public class InitDatanodeState implements DatanodeState,
     Callable<DatanodeStateMachine.DatanodeStates> {
   static final Logger LOG = LoggerFactory.getLogger(InitDatanodeState.class);
   private final SCMConnectionManager connectionManager;
-  private final Configuration conf;
+  private final ConfigurationSource conf;
   private final StateContext context;
   private Future<DatanodeStateMachine.DatanodeStates> result;
 
@@ -63,7 +64,7 @@ public class InitDatanodeState implements DatanodeState,
    * @param connectionManager - Connection Manager
    * @param context - Current Context
    */
-  public InitDatanodeState(Configuration conf,
+  public InitDatanodeState(ConfigurationSource conf,
                            SCMConnectionManager connectionManager,
                            StateContext context) {
     this.conf = conf;

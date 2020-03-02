@@ -31,6 +31,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileAlreadyExistsException;
 import org.apache.hadoop.fs.FileUtil;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos
     .ContainerDataProto;
@@ -96,9 +97,10 @@ public class KeyValueContainer implements Container<KeyValueContainerData> {
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
   private final KeyValueContainerData containerData;
-  private Configuration config;
+  private ConfigurationSource config;
 
-  public KeyValueContainer(KeyValueContainerData containerData, Configuration
+  public KeyValueContainer(KeyValueContainerData containerData,
+      ConfigurationSource
       ozoneConfig) {
     Preconditions.checkNotNull(containerData, "KeyValueContainerData cannot " +
         "be null");

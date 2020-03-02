@@ -17,15 +17,16 @@
  */
 package org.apache.hadoop.hdds.utils;
 
-import org.apache.hadoop.hdds.annotation.InterfaceAudience;
-import org.apache.hadoop.hdds.annotation.InterfaceStability;
-import org.apache.hadoop.io.IOUtils;
-import org.apache.hadoop.util.ThreadUtil;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
+
+import org.apache.hadoop.hdds.HddsUtils;
+import org.apache.hadoop.hdds.annotation.InterfaceAudience;
+import org.apache.hadoop.hdds.annotation.InterfaceStability;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class returns build information about Hadoop components.
@@ -34,13 +35,15 @@ import java.util.Properties;
 @InterfaceStability.Stable
 public class VersionInfo {
 
+  private static final Logger LOG = LoggerFactory.getLogger(VersionInfo.class);
+
   private final Properties info = new Properties();
 
   public VersionInfo(String component) {
     String versionInfoFile = component + "-version-info.properties";
     InputStream is = null;
     try {
-      is = ThreadUtil.getResourceAsStream(
+      is = HddsUtils.getResourceAsStream(
         getClass().getClassLoader(),
         versionInfoFile);
       info.load(is);
@@ -48,7 +51,13 @@ public class VersionInfo {
       LoggerFactory.getLogger(getClass()).warn("Could not read '" +
           versionInfoFile + "', " + ex.toString(), ex);
     } finally {
-      IOUtils.closeStream(is);
+      if (is != null) {
+        try {
+          is.close();
+        } catch (IOException e) {
+          LOG.warn("Version info stream couldn't be closed ", e);
+        }
+      }
     }
   }
 

@@ -20,7 +20,8 @@
 package org.apache.hadoop.hdds.security.x509;
 
 import com.google.common.base.Preconditions;
-import org.apache.hadoop.conf.Configuration;
+
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.ozone.OzoneConfigKeys;
 import org.apache.ratis.thirdparty.io.netty.handler.ssl.SslProvider;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -82,7 +83,7 @@ public class SecurityConfig {
   private static final Logger LOG =
       LoggerFactory.getLogger(SecurityConfig.class);
   private static volatile Provider provider;
-  private final Configuration configuration;
+  private final ConfigurationSource configuration;
   private final int size;
   private final String keyAlgo;
   private final String providerString;
@@ -106,7 +107,7 @@ public class SecurityConfig {
    *
    * @param configuration - HDDS Configuration
    */
-  public SecurityConfig(Configuration configuration) {
+  public SecurityConfig(ConfigurationSource configuration) {
     Preconditions.checkNotNull(configuration, "Configuration cannot be null");
     this.configuration = configuration;
     this.size = this.configuration.getInt(HDDS_KEY_LEN, HDDS_DEFAULT_KEY_LEN);
@@ -305,7 +306,7 @@ public class SecurityConfig {
    *
    * @return Configuration
    */
-  public Configuration getConfiguration() {
+  public ConfigurationSource getConfiguration() {
     return configuration;
   }
 

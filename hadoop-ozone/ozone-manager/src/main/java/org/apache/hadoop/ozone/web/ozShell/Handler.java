@@ -22,7 +22,7 @@ import java.util.concurrent.Callable;
 
 import org.apache.hadoop.hdds.cli.GenericParentCommand;
 import org.apache.hadoop.hdds.cli.HddsVersionProvider;
-import org.apache.hadoop.hdds.conf.OzoneConfiguration;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,7 +50,7 @@ public abstract class Handler implements Callable<Void> {
     return parent.isVerbose();
   }
 
-  public OzoneConfiguration createOzoneConfiguration() {
+  public ConfigurationSource createOzoneConfiguration() {
     return parent.createOzoneConfiguration();
   }
 

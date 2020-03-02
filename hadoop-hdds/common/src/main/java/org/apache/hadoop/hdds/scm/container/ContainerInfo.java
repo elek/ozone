@@ -17,7 +17,18 @@
  */
 package org.apache.hadoop.hdds.scm.container;
 
-import static java.lang.Math.max;
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.util.Arrays;
+import java.util.Comparator;
+
+import org.apache.hadoop.hdds.HddsUtils;
+import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
+import org.apache.hadoop.hdds.protocol.proto.HddsProtos.ReplicationFactor;
+import org.apache.hadoop.hdds.protocol.proto.HddsProtos.ReplicationType;
+import org.apache.hadoop.hdds.scm.pipeline.PipelineID;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -25,19 +36,9 @@ import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.google.common.base.Preconditions;
-import java.io.Externalizable;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
-import java.util.Arrays;
-import java.util.Comparator;
+import static java.lang.Math.max;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
-import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
-import org.apache.hadoop.hdds.protocol.proto.HddsProtos.ReplicationFactor;
-import org.apache.hadoop.hdds.protocol.proto.HddsProtos.ReplicationType;
-import org.apache.hadoop.hdds.scm.pipeline.PipelineID;
-import org.apache.hadoop.util.Time;
 
 /**
  * Class wraps ozone container info.
@@ -98,7 +99,7 @@ public class ContainerInfo implements Comparator<ContainerInfo>,
     this.pipelineID = pipelineID;
     this.usedBytes = usedBytes;
     this.numberOfKeys = numberOfKeys;
-    this.lastUsed = Time.monotonicNow();
+    this.lastUsed = HddsUtils.monotonicNow();
     this.state = state;
     this.stateEnterTime = stateEnterTime;
     this.owner = owner;
@@ -205,7 +206,7 @@ public class ContainerInfo implements Comparator<ContainerInfo>,
   }
 
   public void updateLastUsedTime() {
-    lastUsed = Time.monotonicNow();
+    lastUsed = HddsUtils.monotonicNow();
   }
 
   public HddsProtos.ContainerInfoProto getProtobuf() {

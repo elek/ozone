@@ -17,11 +17,12 @@
 
 package org.apache.hadoop.ozone.lock;
 
-import org.apache.hadoop.hdds.conf.OzoneConfiguration;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import org.apache.hadoop.InMemoryConfigurationSource;
+
 import org.junit.Assert;
 import org.junit.Test;
-
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Test-cases to test LockManager.
@@ -31,7 +32,7 @@ public class TestLockManager {
   @Test(timeout = 1000)
   public void testWriteLockWithDifferentResource() {
     final LockManager<String> manager =
-        new LockManager<>(new OzoneConfiguration());
+        new LockManager<>(new InMemoryConfigurationSource());
     manager.writeLock("/resourceOne");
     // This should work, as they are different resource.
     manager.writeLock("/resourceTwo");
@@ -43,7 +44,7 @@ public class TestLockManager {
   @Test
   public void testWriteLockWithSameResource() throws Exception {
     final LockManager<String> manager =
-        new LockManager<>(new OzoneConfiguration());
+        new LockManager<>(new InMemoryConfigurationSource());
     final AtomicBoolean gotLock = new AtomicBoolean(false);
     manager.writeLock("/resourceOne");
     new Thread(() -> {
@@ -67,7 +68,7 @@ public class TestLockManager {
   @Test(timeout = 1000)
   public void testReadLockWithDifferentResource() {
     final LockManager<String> manager =
-        new LockManager<>(new OzoneConfiguration());
+        new LockManager<>(new InMemoryConfigurationSource());
     manager.readLock("/resourceOne");
     manager.readLock("/resourceTwo");
     manager.readUnlock("/resourceOne");
@@ -78,7 +79,7 @@ public class TestLockManager {
   @Test
   public void testReadLockWithSameResource() throws Exception {
     final LockManager<String> manager =
-        new LockManager<>(new OzoneConfiguration());
+        new LockManager<>(new InMemoryConfigurationSource());
     final AtomicBoolean gotLock = new AtomicBoolean(false);
     manager.readLock("/resourceOne");
     new Thread(() -> {
@@ -96,7 +97,7 @@ public class TestLockManager {
   @Test
   public void testWriteReadLockWithSameResource() throws Exception {
     final LockManager<String> manager =
-        new LockManager<>(new OzoneConfiguration());
+        new LockManager<>(new InMemoryConfigurationSource());
     final AtomicBoolean gotLock = new AtomicBoolean(false);
     manager.writeLock("/resourceOne");
     new Thread(() -> {
@@ -120,7 +121,7 @@ public class TestLockManager {
   @Test
   public void testReadWriteLockWithSameResource() throws Exception {
     final LockManager<String> manager =
-        new LockManager<>(new OzoneConfiguration());
+        new LockManager<>(new InMemoryConfigurationSource());
     final AtomicBoolean gotLock = new AtomicBoolean(false);
     manager.readLock("/resourceOne");
     new Thread(() -> {
@@ -144,7 +145,7 @@ public class TestLockManager {
   @Test
   public void testMultiReadWriteLockWithSameResource() throws Exception {
     final LockManager<String> manager =
-        new LockManager<>(new OzoneConfiguration());
+        new LockManager<>(new InMemoryConfigurationSource());
     final AtomicBoolean gotLock = new AtomicBoolean(false);
     manager.readLock("/resourceOne");
     manager.readLock("/resourceOne");

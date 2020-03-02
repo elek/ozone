@@ -18,28 +18,6 @@
 
 package org.apache.hadoop.hdds.scm;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Preconditions;
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.RemovalListener;
-import com.google.common.cache.RemovalNotification;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hdds.conf.Config;
-import org.apache.hadoop.hdds.conf.ConfigGroup;
-import org.apache.hadoop.hdds.conf.ConfigType;
-import org.apache.hadoop.hdds.conf.OzoneConfiguration;
-import org.apache.hadoop.hdds.scm.pipeline.Pipeline;
-import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
-import org.apache.hadoop.hdds.security.exception.SCMSecurityException;
-import org.apache.hadoop.hdds.security.x509.certificate.utils.CertificateCodec;
-import org.apache.hadoop.ozone.OzoneConfigKeys;
-import org.apache.hadoop.ozone.OzoneSecurityUtil;
-import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.ratis.thirdparty.com.google.protobuf.ByteString;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -49,9 +27,30 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
+import org.apache.hadoop.hdds.conf.Config;
+import org.apache.hadoop.hdds.conf.ConfigGroup;
+import org.apache.hadoop.hdds.conf.ConfigType;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
+import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
+import org.apache.hadoop.hdds.scm.pipeline.Pipeline;
+import org.apache.hadoop.hdds.security.exception.SCMSecurityException;
+import org.apache.hadoop.hdds.security.x509.certificate.utils.CertificateCodec;
+import org.apache.hadoop.ozone.OzoneConfigKeys;
+import org.apache.hadoop.ozone.OzoneSecurityUtil;
+import org.apache.hadoop.security.UserGroupInformation;
+
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.RemovalListener;
+import com.google.common.cache.RemovalNotification;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.apache.hadoop.hdds.conf.ConfigTag.OZONE;
 import static org.apache.hadoop.hdds.conf.ConfigTag.PERFORMANCE;
+import org.apache.ratis.thirdparty.com.google.protobuf.ByteString;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * XceiverClientManager is responsible for the lifecycle of XceiverClient
@@ -69,7 +68,7 @@ public class XceiverClientManager implements Closeable {
   private static final Logger LOG =
       LoggerFactory.getLogger(XceiverClientManager.class);
   //TODO : change this to SCM configuration class
-  private final Configuration conf;
+  private final ConfigurationSource conf;
   private final Cache<String, XceiverClientSpi> clientCache;
   private X509Certificate caCert;
 
@@ -83,12 +82,13 @@ public class XceiverClientManager implements Closeable {
    *
    * @param conf configuration
    */
-  public XceiverClientManager(Configuration conf) throws IOException {
-    this(conf, OzoneConfiguration.of(conf).getObject(ScmClientConfig.class),
+  public XceiverClientManager(ConfigurationSource conf) throws IOException {
+    this(conf, conf.getObject(ScmClientConfig.class),
         null);
   }
 
-  public XceiverClientManager(Configuration conf, ScmClientConfig clientConf,
+  public XceiverClientManager(ConfigurationSource conf,
+      ScmClientConfig clientConf,
       String caCertPem) throws IOException {
     Preconditions.checkNotNull(clientConf);
     Preconditions.checkNotNull(conf);

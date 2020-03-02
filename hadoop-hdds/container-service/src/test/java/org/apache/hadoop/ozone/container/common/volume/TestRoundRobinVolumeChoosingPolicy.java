@@ -18,7 +18,7 @@
 
 package org.apache.hadoop.ozone.container.common.volume;
 
-import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.fs.SpaceUsageCheckFactory;
 import org.apache.hadoop.hdds.fs.SpaceUsagePersistence;
 import org.apache.hadoop.hdds.fs.SpaceUsageSource;
@@ -45,7 +45,7 @@ public class TestRoundRobinVolumeChoosingPolicy {
   private RoundRobinVolumeChoosingPolicy policy;
   private final List<HddsVolume> volumes = new ArrayList<>();
 
-  private static final Configuration CONF = new Configuration();
+  private static final OzoneConfiguration CONF = new OzoneConfiguration();
   private static final String BASE_DIR =
       getTestDir(TestRoundRobinVolumeChoosingPolicy.class.getSimpleName())
           .getAbsolutePath();

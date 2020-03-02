@@ -18,9 +18,9 @@ package org.apache.hadoop.ozone.container.common;
 
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.hdds.HddsConfigKeys;
+import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.scm.ScmConfigKeys;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
 import org.apache.hadoop.ipc.RPC;
@@ -77,7 +77,7 @@ public class TestDatanodeStateMachine {
   private List<RPC.Server> scmServers;
   private List<ScmTestMock> mockServers;
   private ExecutorService executorService;
-  private Configuration conf;
+  private OzoneConfiguration conf;
   private File testRoot;
 
   @Before
@@ -403,7 +403,7 @@ public class TestDatanodeStateMachine {
         ScmConfigKeys.OZONE_SCM_DATANODE_ID_DIR, ""));
 
     confList.forEach((entry) -> {
-      Configuration perTestConf = new Configuration(conf);
+      OzoneConfiguration perTestConf = new OzoneConfiguration(conf);
       perTestConf.setStrings(entry.getKey(), entry.getValue());
       LOG.info("Test with {} = {}", entry.getKey(), entry.getValue());
       try (DatanodeStateMachine stateMachine = new DatanodeStateMachine(

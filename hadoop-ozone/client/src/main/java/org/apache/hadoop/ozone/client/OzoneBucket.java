@@ -18,19 +18,24 @@
 
 package org.apache.hadoop.ozone.client;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Preconditions;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hdds.protocol.StorageType;
+import java.io.IOException;
+import java.time.Instant;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
+
 import org.apache.hadoop.hdds.client.ReplicationFactor;
 import org.apache.hadoop.hdds.client.ReplicationType;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
+import org.apache.hadoop.hdds.protocol.StorageType;
 import org.apache.hadoop.hdds.scm.client.HddsClientUtils;
+import org.apache.hadoop.ozone.OzoneAcl;
 import org.apache.hadoop.ozone.OzoneConfigKeys;
 import org.apache.hadoop.ozone.client.io.OzoneInputStream;
 import org.apache.hadoop.ozone.client.io.OzoneOutputStream;
 import org.apache.hadoop.ozone.client.protocol.ClientProtocol;
-import org.apache.hadoop.ozone.OzoneAcl;
 import org.apache.hadoop.ozone.om.exceptions.OMException;
 import org.apache.hadoop.ozone.om.helpers.OmMultipartInfo;
 import org.apache.hadoop.ozone.om.helpers.OmMultipartUploadCompleteInfo;
@@ -39,13 +44,9 @@ import org.apache.hadoop.ozone.om.helpers.WithMetadata;
 import org.apache.hadoop.ozone.security.acl.OzoneObj;
 import org.apache.hadoop.ozone.security.acl.OzoneObjInfo;
 
-import java.io.IOException;
-import java.time.Instant;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.NoSuchElementException;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
 
 /**
  * A class that encapsulates OzoneBucket.
@@ -103,8 +104,7 @@ public class OzoneBucket extends WithMetadata {
 
   private OzoneObj ozoneObj;
 
-
-  private OzoneBucket(Configuration conf, String volumeName,
+  private OzoneBucket(ConfigurationSource conf, String volumeName,
       String bucketName, ReplicationFactor defaultReplication,
       ReplicationType defaultReplicationType, ClientProtocol proxy) {
     Preconditions.checkNotNull(proxy, "Client proxy is not set.");
@@ -133,7 +133,7 @@ public class OzoneBucket extends WithMetadata {
         .setStoreType(OzoneObj.StoreType.OZONE).build();
   }
   @SuppressWarnings("parameternumber")
-  public OzoneBucket(Configuration conf, ClientProtocol proxy,
+  public OzoneBucket(ConfigurationSource conf, ClientProtocol proxy,
       String volumeName, String bucketName, StorageType storageType,
       Boolean versioning, long creationTime, Map<String, String> metadata,
       String encryptionKeyName) {
@@ -157,7 +157,7 @@ public class OzoneBucket extends WithMetadata {
    * @param creationTime creation time of the bucket.
    */
   @SuppressWarnings("parameternumber")
-  public OzoneBucket(Configuration conf, ClientProtocol proxy,
+  public OzoneBucket(ConfigurationSource conf, ClientProtocol proxy,
       String volumeName, String bucketName, StorageType storageType,
       Boolean versioning, long creationTime, Map<String, String> metadata) {
     this(conf, volumeName, bucketName, null, null, proxy);

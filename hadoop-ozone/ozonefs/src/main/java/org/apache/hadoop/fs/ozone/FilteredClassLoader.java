@@ -64,6 +64,7 @@ public class FilteredClassLoader extends URLClassLoader {
     delegatedClasses.add("org.apache.hadoop.io.Text");
     delegatedClasses.add("org.apache.hadoop.fs.Path");
     delegatedClasses.add("org.apache.hadoop.fs.BlockLocation");
+    delegatedClasses.add("org.apache.hadoop.hdds.conf.ConfigurationSource");
     delegatedClasses.addAll(StringUtils.getTrimmedStringCollection(
         System.getenv("HADOOP_OZONE_DELEGATED_CLASSES")));
     this.delegate = parent;

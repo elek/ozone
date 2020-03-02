@@ -17,19 +17,18 @@
  */
 package org.apache.hadoop.ozone.common;
 
-import org.apache.hadoop.hdds.annotation.InterfaceAudience;
-import org.apache.hadoop.fs.FileUtil;
-import org.apache.hadoop.hdds.protocol.proto.HddsProtos.NodeType;
-import org.apache.hadoop.util.Time;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Properties;
+
+import org.apache.hadoop.hdds.annotation.InterfaceAudience;
+import org.apache.hadoop.hdds.protocol.proto.HddsProtos.NodeType;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Storage information file. This Class defines the methods to check
@@ -74,7 +73,7 @@ public abstract class Storage {
       this.storageInfo = new StorageInfo(type, getVersionFile());
     } else {
       this.storageInfo = new StorageInfo(
-          nodeType, StorageInfo.newClusterID(), Time.now());
+          nodeType, StorageInfo.newClusterID(), System.currentTimeMillis());
       setNodeProperties();
     }
   }
@@ -209,7 +208,7 @@ public abstract class Storage {
         LOG.warn("{} is not a directory", rootPath);
         return StorageState.NON_EXISTENT;
       }
-      if (!FileUtil.canWrite(root)) {
+      if (!root.canWrite()) {
         LOG.warn("Cannot access storage directory {}", rootPath);
         return StorageState.NON_EXISTENT;
       }

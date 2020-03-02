@@ -28,8 +28,8 @@ import org.apache.hadoop.hdds.protocol.proto.HddsProtos.BlockTokenSecretProto.Ac
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos.BlockTokenSecretProto.Builder;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.hadoop.security.token.TokenIdentifier;
 import org.apache.hadoop.security.token.Token.TrivialRenewer;
+import org.apache.hadoop.security.token.TokenIdentifier;
 
 import java.io.DataInput;
 import java.io.DataInputStream;

@@ -20,6 +20,7 @@ package org.apache.hadoop.ozone.container.common.volume;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.fs.SpaceUsageCheckFactory;
 import org.apache.hadoop.hdds.fs.SpaceUsageCheckParams;
 import org.apache.hadoop.fs.StorageType;
@@ -51,13 +52,13 @@ public final class VolumeInfo {
    * Builder for VolumeInfo.
    */
   public static class Builder {
-    private final Configuration conf;
+    private final ConfigurationSource conf;
     private final String rootDir;
     private SpaceUsageCheckFactory usageCheckFactory;
     private StorageType storageType;
     private long configuredCapacity;
 
-    public Builder(String root, Configuration config) {
+    public Builder(String root, ConfigurationSource config) {
       this.rootDir = root;
       this.conf = config;
     }

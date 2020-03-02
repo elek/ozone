@@ -71,7 +71,7 @@ public class TestReplicationManager {
 
   @Before
   public void setup() throws IOException, InterruptedException {
-    final Configuration conf = new OzoneConfiguration();
+    final OzoneConfiguration conf = new OzoneConfiguration();
     final ContainerManager containerManager =
         Mockito.mock(ContainerManager.class);
     eventQueue = new EventQueue();

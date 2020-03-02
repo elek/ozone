@@ -29,8 +29,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.hadoop.hdds.HddsUtils;
 import org.apache.hadoop.hdds.StringUtils;
+import org.apache.hadoop.hdds.utils.HddsServerUtil;
 import org.apache.hadoop.hdds.utils.RocksDBStoreMBean;
 import org.apache.hadoop.metrics2.util.MBeans;
 
@@ -106,7 +106,7 @@ public class RDBStore implements DBStore {
       if (dbOptions.statistics() != null) {
         Map<String, String> jmxProperties = new HashMap<>();
         jmxProperties.put("dbName", dbFile.getName());
-        statMBeanName = HddsUtils.registerWithJmxProperties(
+        statMBeanName = HddsServerUtil.registerWithJmxProperties(
             "Ozone", "RocksDbStore", jmxProperties,
             RocksDBStoreMBean.create(dbOptions.statistics(),
                 dbFile.getName()));

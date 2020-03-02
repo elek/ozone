@@ -20,7 +20,9 @@ package org.apache.hadoop.ozone.om.ha;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
+import org.apache.hadoop.hdds.utils.HddsServerUtil;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.retry.FailoverProxyProvider;
 import org.apache.hadoop.io.retry.RetryInvocationHandler;
@@ -67,14 +69,14 @@ public class OMFailoverProxyProvider implements
   private String currentProxyOMNodeId;
   private int currentProxyIndex;
 
-  private final Configuration conf;
+  private final ConfigurationSource conf;
   private final long omVersion;
   private final UserGroupInformation ugi;
   private final Text delegationTokenService;
 
   private final String omServiceId;
 
-  public OMFailoverProxyProvider(OzoneConfiguration configuration,
+  public OMFailoverProxyProvider(ConfigurationSource configuration,
       UserGroupInformation ugi, String omServiceId) throws IOException {
     this.conf = configuration;
     this.omVersion = RPC.getProtocolVersion(OzoneManagerProtocolPB.class);
@@ -92,7 +94,7 @@ public class OMFailoverProxyProvider implements
     this(configuration, ugi, null);
   }
 
-  private void loadOMClientConfigs(Configuration config, String omSvcId)
+  private void loadOMClientConfigs(ConfigurationSource config, String omSvcId)
       throws IOException {
     this.omProxies = new HashMap<>();
     this.omProxyInfos = new HashMap<>();
@@ -148,11 +150,14 @@ public class OMFailoverProxyProvider implements
 
   private OzoneManagerProtocolPB createOMProxy(InetSocketAddress omAddress)
       throws IOException {
-    RPC.setProtocolEngine(conf, OzoneManagerProtocolPB.class,
+    Configuration hadoopConfig =
+        HddsServerUtil.getLegacyHadoopConfiguration(conf);
+
+    RPC.setProtocolEngine(hadoopConfig, OzoneManagerProtocolPB.class,
         ProtobufRpcEngine.class);
     return RPC.getProxy(OzoneManagerProtocolPB.class, omVersion, omAddress, ugi,
-        conf, NetUtils.getDefaultSocketFactory(conf),
-        Client.getRpcTimeout(conf));
+        hadoopConfig, NetUtils.getDefaultSocketFactory(hadoopConfig),
+        Client.getRpcTimeout(hadoopConfig));
   }
 
   /**

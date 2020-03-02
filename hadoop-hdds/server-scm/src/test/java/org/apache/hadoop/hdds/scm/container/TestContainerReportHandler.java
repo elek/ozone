@@ -59,7 +59,7 @@ public class TestContainerReportHandler {
 
   @Before
   public void setup() throws IOException {
-    final Configuration conf = new OzoneConfiguration();
+    final OzoneConfiguration conf = new OzoneConfiguration();
     this.nodeManager = new MockNodeManager(true, 10);
     this.containerManager = Mockito.mock(ContainerManager.class);
     this.containerStateManager = new ContainerStateManager(conf);

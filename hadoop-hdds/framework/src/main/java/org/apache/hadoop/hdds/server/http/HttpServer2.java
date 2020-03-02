@@ -17,6 +17,17 @@
  */
 package org.apache.hadoop.hdds.server.http;
 
+import javax.servlet.Filter;
+import javax.servlet.FilterChain;
+import javax.servlet.FilterConfig;
+import javax.servlet.ServletContext;
+import javax.servlet.ServletException;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletRequestWrapper;
+import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -37,41 +48,32 @@ import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.servlet.Filter;
-import javax.servlet.FilterChain;
-import javax.servlet.FilterConfig;
-import javax.servlet.ServletContext;
-import javax.servlet.ServletException;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletRequestWrapper;
-import javax.servlet.http.HttpServletResponse;
-
-import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
-import com.sun.jersey.spi.container.servlet.ServletContainer;
 import org.apache.hadoop.HadoopIllegalArgumentException;
-import org.apache.hadoop.hdds.annotation.InterfaceAudience;
-import org.apache.hadoop.hdds.annotation.InterfaceStability;
 import org.apache.hadoop.conf.ConfServlet;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configuration.IntegerRanges;
 import org.apache.hadoop.fs.CommonConfigurationKeys;
+import org.apache.hadoop.hdds.annotation.InterfaceAudience;
+import org.apache.hadoop.hdds.annotation.InterfaceStability;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
+import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.jmx.JMXJsonServlet;
 import org.apache.hadoop.log.LogLevel;
-import org.apache.hadoop.security.AuthenticationFilterInitializer;
 import org.apache.hadoop.security.SecurityUtil;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.authentication.server.AuthenticationFilter;
+import org.apache.hadoop.security.authentication.server.KerberosAuthenticationHandler;
 import org.apache.hadoop.security.authentication.util.SignerSecretProvider;
 import org.apache.hadoop.security.authorize.AccessControlList;
 import org.apache.hadoop.security.ssl.SSLFactory;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.hadoop.util.Shell;
 import org.apache.hadoop.util.StringUtils;
+
+import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
+import com.sun.jersey.spi.container.servlet.ServletContainer;
 import org.eclipse.jetty.http.HttpVersion;
 import org.eclipse.jetty.server.ConnectionFactory;
 import org.eclipse.jetty.server.Connector;
@@ -192,7 +194,7 @@ public final class HttpServer2 implements FilterContainer {
   public static class Builder {
     private ArrayList<URI> endpoints = Lists.newArrayList();
     private String name;
-    private Configuration conf;
+    private ConfigurationSource conf;
     private Configuration sslConf;
     private String[] pathSpecs;
     private AccessControlList adminsAcl;
@@ -291,7 +293,7 @@ public final class HttpServer2 implements FilterContainer {
       return this;
     }
 
-    public Builder setConf(Configuration configuration) {
+    public Builder setConf(ConfigurationSource configuration) {
       this.conf = configuration;
       return this;
     }
@@ -426,7 +428,7 @@ public final class HttpServer2 implements FilterContainer {
       }
 
       if (this.conf == null) {
-        conf = new Configuration();
+        conf = new OzoneConfiguration();
       }
 
       HttpServer2 server = new HttpServer2(this);
@@ -565,7 +567,7 @@ public final class HttpServer2 implements FilterContainer {
   }
 
   private void initializeWebServer(String name, String hostName,
-      Configuration conf, String[] pathSpecs)
+      ConfigurationSource conf, String[] pathSpecs)
       throws IOException {
 
     Preconditions.checkNotNull(webAppContext);
@@ -602,8 +604,6 @@ public final class HttpServer2 implements FilterContainer {
     addGlobalFilter("safety", QuotingInputFilter.class.getName(), xFrameParams);
     final FilterInitializer[] initializers = getFilterInitializers(conf);
     if (initializers != null) {
-      conf = new Configuration(conf);
-      conf.set(BIND_ADDRESS, hostName);
       for (FilterInitializer c : initializers) {
         c.initFilter(this, conf);
       }
@@ -654,21 +654,52 @@ public final class HttpServer2 implements FilterContainer {
   private static SignerSecretProvider constructSecretProvider(final Builder b,
       ServletContext ctx)
       throws Exception {
-    final Configuration conf = b.conf;
+    final ConfigurationSource conf = b.conf;
     Properties config = getFilterProperties(conf,
         b.authFilterConfigurationPrefix);
     return AuthenticationFilter.constructSecretProvider(
         ctx, config, b.disallowFallbackToRandomSignerSecretProvider);
   }
 
-  private static Properties getFilterProperties(Configuration conf, String
+  private static Properties getFilterProperties(ConfigurationSource conf, String
       prefix) {
     Properties prop = new Properties();
-    Map<String, String> filterConfig = AuthenticationFilterInitializer
-        .getFilterConfigMap(conf, prefix);
+    Map<String, String> filterConfig =
+        getAuthenticationFilterConfigMap(conf, prefix);
     prop.putAll(filterConfig);
     return prop;
   }
+
+  public static Map<String, String> getAuthenticationFilterConfigMap(
+      ConfigurationSource conf,
+      String prefix) {
+    Map<String, String> filterConfig = new HashMap<String, String>();
+
+    //setting the cookie path to root '/' so it is used for all resources.
+    filterConfig.put(AuthenticationFilter.COOKIE_PATH, "/");
+    Map<String, String> propsWithPrefix = conf.getPropsWithPrefix(prefix);
+
+    for (Map.Entry<String, String> entry : propsWithPrefix.entrySet()) {
+      filterConfig.put(entry.getKey(), entry.getValue());
+    }
+
+    //Resolve _HOST into bind address
+    String bindAddress =
+        conf.get(org.apache.hadoop.http.HttpServer2.BIND_ADDRESS);
+    String principal =
+        filterConfig.get(KerberosAuthenticationHandler.PRINCIPAL);
+    if (principal != null) {
+      try {
+        principal = SecurityUtil.getServerPrincipal(principal, bindAddress);
+      } catch (IOException ex) {
+        throw new RuntimeException(
+            "Could not resolve Kerberos principal name: " + ex.toString(), ex);
+      }
+      filterConfig.put(KerberosAuthenticationHandler.PRINCIPAL, principal);
+    }
+    return filterConfig;
+  }
+
 
   private static void addNoCacheFilter(ServletContextHandler ctxt) {
     defineFilter(ctxt, NO_CACHE_FILTER, NoCacheFilter.class.getName(),
@@ -678,7 +709,8 @@ public final class HttpServer2 implements FilterContainer {
   /**
    * Get an array of FilterConfiguration specified in the conf.
    */
-  private static FilterInitializer[] getFilterInitializers(Configuration conf) {
+  private static FilterInitializer[] getFilterInitializers(
+      ConfigurationSource conf) {
     if (conf == null) {
       return null;
     }
@@ -691,8 +723,12 @@ public final class HttpServer2 implements FilterContainer {
 
     FilterInitializer[] initializers = new FilterInitializer[classes.length];
     for (int i = 0; i < classes.length; i++) {
-      initializers[i] = (FilterInitializer) ReflectionUtils.newInstance(
-          classes[i], conf);
+      try {
+        initializers[i] = (FilterInitializer) classes[i].newInstance();
+      } catch (Exception e) {
+        LOG.error("Can't initialize the filter initializer {}",
+            classes[i].getCanonicalName(), e);
+      }
     }
     return initializers;
   }
@@ -703,7 +739,7 @@ public final class HttpServer2 implements FilterContainer {
    * @throws IOException
    */
   protected void addDefaultApps(ContextHandlerCollection parent,
-      final String appDir, Configuration conf) throws IOException {
+      final String appDir, ConfigurationSource conf) throws IOException {
     // set up the context for "/logs/" if "hadoop.log.dir" property is defined
     // and it's enabled.
     String logDir = System.getProperty("hadoop.log.dir");
@@ -750,7 +786,7 @@ public final class HttpServer2 implements FilterContainer {
   }
 
   private void setContextAttributes(ServletContextHandler context,
-      Configuration conf) {
+      ConfigurationSource conf) {
     context.getServletContext().setAttribute(CONF_CONTEXT_ATTRIBUTE, conf);
     context.getServletContext().setAttribute(ADMINS_ACL, adminsAcl);
   }
@@ -1110,7 +1146,7 @@ public final class HttpServer2 implements FilterContainer {
     pool.setMaxThreads(max);
   }
 
-  private void initSpnego(Configuration conf, String hostName,
+  private void initSpnego(ConfigurationSource conf, String hostName,
       String usernameConfKey, String keytabConfKey) throws IOException {
     Map<String, String> params = new HashMap<>();
     String principalInConf = conf.get(usernameConfKey);
@@ -1679,10 +1715,9 @@ public final class HttpServer2 implements FilterContainer {
     }
   }
 
-  private Map<String, String> setHeaders(Configuration conf) {
+  private Map<String, String> setHeaders(ConfigurationSource conf) {
     Map<String, String> xFrameParams = new HashMap<>();
-    Map<String, String> headerConfigMap =
-        conf.getValByRegex(HTTP_HEADER_REGEX);
+    Map<String, String> headerConfigMap = new HashMap<>();
 
     xFrameParams.putAll(getDefaultHeaders());
     if (this.xFrameOptionIsEnabled) {

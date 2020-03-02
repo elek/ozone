@@ -25,6 +25,7 @@ import java.util.UUID;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.hdds.HddsConfigKeys;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
@@ -292,7 +293,7 @@ public class TestEndPoint {
 
   private EndpointStateMachine registerTaskHelper(InetSocketAddress scmAddress,
       int rpcTimeout, boolean clearDatanodeDetails) throws Exception {
-    Configuration conf = SCMTestUtils.getConf();
+    ConfigurationSource conf = SCMTestUtils.getConf();
     EndpointStateMachine rpcEndPoint =
         createEndpoint(conf,
             scmAddress, rpcTimeout);
@@ -453,7 +454,7 @@ public class TestEndPoint {
 
   private StateContext heartbeatTaskHelper(InetSocketAddress scmAddress,
       int rpcTimeout) throws Exception {
-    Configuration conf = SCMTestUtils.getConf();
+    OzoneConfiguration conf = SCMTestUtils.getConf();
     conf.set(DFS_DATANODE_DATA_DIR_KEY, testDir.getAbsolutePath());
     conf.set(OZONE_METADATA_DIRS, testDir.getAbsolutePath());
     // Mini Ozone cluster will not come up if the port is not true, since

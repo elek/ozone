@@ -26,7 +26,6 @@ import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdds.HddsUtils;
 import org.apache.hadoop.hdds.client.BlockID;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
@@ -92,7 +91,7 @@ public class BenchMarkDatanodeDispatcher {
     // 1 MB of data
     data = ByteString.copyFromUtf8(RandomStringUtils.randomAscii(CHUNK_SIZE));
     random = new Random();
-    Configuration conf = new OzoneConfiguration();
+    OzoneConfiguration conf = new OzoneConfiguration();
     baseDir = System.getProperty("java.io.tmpdir") + File.separator +
         datanodeUuid;
 

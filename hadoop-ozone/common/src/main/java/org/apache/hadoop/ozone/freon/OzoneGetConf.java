@@ -33,6 +33,7 @@ import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.hdds.HddsUtils;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.ozone.OmUtils;
+import org.apache.hadoop.ozone.util.LegacyHadoopConfigurationSource;
 import org.apache.hadoop.security.SecurityUtil;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.hadoop.util.Tool;
@@ -237,7 +238,7 @@ public class OzoneGetConf extends Configured implements Tool {
     public int doWorkInternal(OzoneGetConf tool, String[] args)
         throws IOException {
       Collection<InetSocketAddress> addresses = HddsUtils
-          .getSCMAddresses(tool.getConf());
+          .getSCMAddresses(new LegacyHadoopConfigurationSource(tool.getConf()));
 
       for (InetSocketAddress addr : addresses) {
         tool.printOut(addr.getHostName());
@@ -253,7 +254,9 @@ public class OzoneGetConf extends Configured implements Tool {
     @Override
     public int doWorkInternal(OzoneGetConf tool, String[] args)
         throws IOException {
-      tool.printOut(OmUtils.getOmAddress(tool.getConf()).getHostName());
+      tool.printOut(OmUtils
+          .getOmAddress(new LegacyHadoopConfigurationSource(tool.getConf()))
+          .getHostName());
       return 0;
     }
   }

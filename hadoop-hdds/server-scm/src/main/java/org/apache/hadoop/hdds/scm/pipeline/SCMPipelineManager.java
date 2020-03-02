@@ -22,6 +22,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdds.HddsConfigKeys;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos.ReplicationFactor;
@@ -80,12 +81,12 @@ public class SCMPipelineManager implements PipelineManager {
   private final EventPublisher eventPublisher;
   private final NodeManager nodeManager;
   private final SCMPipelineMetrics metrics;
-  private final Configuration conf;
+  private final ConfigurationSource conf;
   private long pipelineWaitDefaultTimeout;
   // Pipeline Manager MXBean
   private ObjectName pmInfoBean;
 
-  public SCMPipelineManager(Configuration conf, NodeManager nodeManager,
+  public SCMPipelineManager(ConfigurationSource conf, NodeManager nodeManager,
       EventPublisher eventPublisher)
       throws IOException {
     this(conf, nodeManager, eventPublisher, null, null);
@@ -95,7 +96,7 @@ public class SCMPipelineManager implements PipelineManager {
     initializePipelineState();
   }
 
-  protected SCMPipelineManager(Configuration conf, NodeManager nodeManager,
+  protected SCMPipelineManager(ConfigurationSource conf, NodeManager nodeManager,
                                EventPublisher eventPublisher,
                                PipelineStateManager pipelineStateManager,
                                PipelineFactory pipelineFactory)
@@ -597,7 +598,7 @@ public class SCMPipelineManager implements PipelineManager {
     pipelineFactory.shutdown();
   }
 
-  protected File getPipelineDBPath(Configuration configuration) {
+  protected File getPipelineDBPath(ConfigurationSource configuration) {
     File metaDir = ServerUtils.getScmDbDir(configuration);
     return new File(metaDir, SCM_PIPELINE_DB);
   }

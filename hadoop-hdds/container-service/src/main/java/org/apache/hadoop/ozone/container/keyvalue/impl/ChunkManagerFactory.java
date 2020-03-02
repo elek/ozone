@@ -19,7 +19,7 @@
 package org.apache.hadoop.ozone.container.keyvalue.impl;
 
 import com.google.common.base.Preconditions;
-import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.ozone.container.keyvalue.interfaces.ChunkManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,7 +42,7 @@ public final class ChunkManagerFactory {
   private ChunkManagerFactory() {
   }
 
-  public static ChunkManager getChunkManager(Configuration config,
+  public static ChunkManager getChunkManager(ConfigurationSource config,
       boolean sync) {
     if (instance == null) {
       synchronized (ChunkManagerFactory.class) {
@@ -58,7 +58,7 @@ public final class ChunkManagerFactory {
     return instance;
   }
 
-  private static ChunkManager createChunkManager(Configuration config,
+  private static ChunkManager createChunkManager(ConfigurationSource config,
       boolean sync) {
     ChunkManager manager = null;
     boolean persist = config.getBoolean(HDDS_CONTAINER_PERSISTDATA,

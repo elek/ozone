@@ -21,7 +21,7 @@ package org.apache.hadoop.hdds.utils;
 import com.google.common.base.Preconditions;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.apache.hadoop.hdds.HddsUtils;
+
 import org.apache.hadoop.metrics2.util.MBeans;
 import org.apache.ratis.thirdparty.com.google.common.annotations.
     VisibleForTesting;
@@ -69,7 +69,7 @@ public class RocksDBStore implements MetadataStore {
       if (dbOptions.statistics() != null) {
         Map<String, String> jmxProperties = new HashMap<String, String>();
         jmxProperties.put("dbName", dbFile.getName());
-        statMBeanName = HddsUtils.registerWithJmxProperties(
+        statMBeanName = HddsServerUtil.registerWithJmxProperties(
             "Ozone", "RocksDbStore", jmxProperties,
             RocksDBStoreMBean.create(dbOptions.statistics(), dbFile.getName()));
         if (statMBeanName == null) {

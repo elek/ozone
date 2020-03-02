@@ -17,6 +17,8 @@
 package org.apache.hadoop.ozone.container.common.statemachine;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
+import org.apache.hadoop.hdds.utils.HddsServerUtil;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.io.retry.RetryPolicies;
 import org.apache.hadoop.io.retry.RetryPolicy;
@@ -61,10 +63,10 @@ public class SCMConnectionManager
   private final Map<InetSocketAddress, EndpointStateMachine> scmMachines;
 
   private final int rpcTimeout;
-  private final Configuration conf;
+  private final ConfigurationSource conf;
   private ObjectName jmxBean;
 
-  public SCMConnectionManager(Configuration conf) {
+  public SCMConnectionManager(ConfigurationSource conf) {
     this.mapLock = new ReentrantReadWriteLock();
     Long timeOut = getScmRpcTimeOutInMilliseconds(conf);
     this.rpcTimeout = timeOut.intValue();
@@ -81,7 +83,7 @@ public class SCMConnectionManager
    *
    * @return ozoneConfig.
    */
-  public Configuration getConf() {
+  public ConfigurationSource getConf() {
     return conf;
   }
 
@@ -160,7 +162,12 @@ public class SCMConnectionManager
             "Ignoring the request.");
         return;
       }
-      RPC.setProtocolEngine(conf, StorageContainerDatanodeProtocolPB.class,
+
+      Configuration hadoopConfiguration =
+          HddsServerUtil.getLegacyHadoopConfiguration(conf);
+
+      RPC.setProtocolEngine(hadoopConfiguration,
+          StorageContainerDatanodeProtocolPB.class,
           ProtobufRpcEngine.class);
       long version =
           RPC.getProtocolVersion(StorageContainerDatanodeProtocolPB.class);
@@ -170,8 +177,9 @@ public class SCMConnectionManager
               sleepTime, TimeUnit.MILLISECONDS);
       StorageContainerDatanodeProtocolPB rpcProxy = RPC.getProtocolProxy(
           StorageContainerDatanodeProtocolPB.class, version,
-          address, UserGroupInformation.getCurrentUser(), conf,
-          NetUtils.getDefaultSocketFactory(conf), getRpcTimeout(),
+          address, UserGroupInformation.getCurrentUser(), hadoopConfiguration,
+          NetUtils.getDefaultSocketFactory(hadoopConfiguration),
+          getRpcTimeout(),
           retryPolicy).getProxy();
 
       StorageContainerDatanodeProtocolClientSideTranslatorPB rpcClient =

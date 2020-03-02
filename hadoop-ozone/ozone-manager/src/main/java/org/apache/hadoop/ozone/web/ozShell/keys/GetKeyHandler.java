@@ -24,8 +24,8 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import org.apache.hadoop.conf.StorageUnit;
-import org.apache.hadoop.hdds.conf.OzoneConfiguration;
+import org.apache.hadoop.hdds.conf.StorageUnit;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.ozone.client.OzoneBucket;
 import org.apache.hadoop.ozone.client.OzoneClient;
@@ -66,7 +66,7 @@ public class GetKeyHandler extends Handler {
     OzoneAddress address = new OzoneAddress(uri);
     address.ensureKeyAddress();
 
-    OzoneConfiguration conf = createOzoneConfiguration();
+    ConfigurationSource conf = createOzoneConfiguration();
 
     try (OzoneClient client = address.createClient(conf)) {
 

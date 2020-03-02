@@ -229,7 +229,7 @@ public class TestKeyValueHandler {
   @Test
   public void testVolumeSetInKeyValueHandler() throws Exception{
     File path = GenericTestUtils.getRandomizedTestDir();
-    Configuration conf = new OzoneConfiguration();
+    OzoneConfiguration conf = new OzoneConfiguration();
     conf.set(HDDS_DATANODE_DIR_KEY, path.getAbsolutePath());
     VolumeSet volumeSet = new VolumeSet(UUID.randomUUID().toString(), conf);
     try {
@@ -288,7 +288,7 @@ public class TestKeyValueHandler {
   @Test
   public void testCloseInvalidContainer() throws IOException {
     long containerID = 1234L;
-    Configuration conf = new Configuration();
+    OzoneConfiguration conf = new OzoneConfiguration();
     KeyValueContainerData kvData = new KeyValueContainerData(containerID,
         (long) StorageUnit.GB.toBytes(1), UUID.randomUUID().toString(),
         UUID.randomUUID().toString());

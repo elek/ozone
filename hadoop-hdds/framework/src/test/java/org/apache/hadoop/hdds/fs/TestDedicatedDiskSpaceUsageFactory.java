@@ -18,6 +18,8 @@
 package org.apache.hadoop.hdds.fs;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hdds.conf.OzoneConfiguration;
+
 import org.junit.Test;
 
 import java.io.File;
@@ -41,7 +43,7 @@ public class TestDedicatedDiskSpaceUsageFactory {
 
   @Test
   public void testParams() {
-    Configuration conf = new Configuration();
+    OzoneConfiguration conf = new OzoneConfiguration();
     conf.set(configKeyForRefreshPeriod(), "2m");
     File dir = getTestDir(getClass().getSimpleName());
 

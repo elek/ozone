@@ -51,7 +51,6 @@ import org.apache.hadoop.crypto.key.KeyProviderCryptoExtension;
 import org.apache.hadoop.fs.CommonConfigurationKeys;
 import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
 import org.apache.hadoop.hdds.HddsConfigKeys;
-import org.apache.hadoop.hdds.HddsUtils;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
@@ -2351,7 +2350,7 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
   private void registerMXBean() {
     Map<String, String> jmxProperties = new HashMap<>();
     jmxProperties.put("component", "ServerRuntime");
-    this.omInfoBeanName = HddsUtils.registerWithJmxProperties(
+    this.omInfoBeanName = HddsServerUtil.registerWithJmxProperties(
         "OzoneManager", "OzoneManagerInfo", jmxProperties, this);
   }
 

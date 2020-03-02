@@ -17,9 +17,18 @@
  */
 package org.apache.hadoop.ozone.genesis;
 
-import org.apache.commons.lang3.RandomStringUtils;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+import java.util.UUID;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.StorageUnit;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
@@ -30,24 +39,16 @@ import org.apache.hadoop.hdds.scm.server.SCMConfigurator;
 import org.apache.hadoop.hdds.scm.server.SCMStorageConfig;
 import org.apache.hadoop.hdds.scm.server.StorageContainerManager;
 import org.apache.hadoop.hdds.server.ServerUtils;
+import org.apache.hadoop.hdds.utils.MetadataStore;
+import org.apache.hadoop.hdds.utils.MetadataStoreBuilder;
 import org.apache.hadoop.ozone.OzoneConsts;
 import org.apache.hadoop.ozone.common.Storage;
 import org.apache.hadoop.ozone.om.OMConfigKeys;
 import org.apache.hadoop.ozone.om.OMStorage;
 import org.apache.hadoop.ozone.om.OzoneManager;
 import org.apache.hadoop.security.authentication.client.AuthenticationException;
-import org.apache.hadoop.hdds.utils.MetadataStore;
-import org.apache.hadoop.hdds.utils.MetadataStoreBuilder;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
-import java.util.UUID;
-
+import org.apache.commons.lang3.RandomStringUtils;
 import static org.apache.hadoop.hdds.scm.ScmConfigKeys.OZONE_SCM_DB_CACHE_SIZE_DEFAULT;
 import static org.apache.hadoop.hdds.scm.ScmConfigKeys.OZONE_SCM_DB_CACHE_SIZE_MB;
 import static org.apache.hadoop.ozone.OzoneConsts.SCM_PIPELINE_DB;
@@ -77,7 +78,7 @@ public final class GenesisUtil {
 
   public static MetadataStore getMetadataStore(String dbType)
       throws IOException {
-    Configuration conf = new Configuration();
+    OzoneConfiguration conf = new OzoneConfiguration();
     MetadataStoreBuilder builder = MetadataStoreBuilder.newBuilder();
     builder.setConf(conf);
     builder.setCreateIfMissing(true);
@@ -150,7 +151,7 @@ public final class GenesisUtil {
   }
 
   static void addPipelines(HddsProtos.ReplicationFactor factor,
-      int numPipelines, Configuration conf) throws IOException {
+      int numPipelines, ConfigurationSource conf) throws IOException {
     final File metaDir = ServerUtils.getScmDbDir(conf);
     final File pipelineDBPath = new File(metaDir, SCM_PIPELINE_DB);
     int cacheSize = conf.getInt(OZONE_SCM_DB_CACHE_SIZE_MB,

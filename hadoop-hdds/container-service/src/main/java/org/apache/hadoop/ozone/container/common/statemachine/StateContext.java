@@ -26,7 +26,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.protocol.proto
     .StorageContainerDatanodeProtocolProtos.SCMCommandProto;
 import org.apache.hadoop.hdds.protocol.proto
@@ -74,7 +74,7 @@ public class StateContext {
   private final Lock lock;
   private final DatanodeStateMachine parent;
   private final AtomicLong stateExecutionCount;
-  private final Configuration conf;
+  private final ConfigurationSource conf;
   private final Set<String> endpoints;
   private final Map<String, List<GeneratedMessage>> reports;
   private final Map<String, Queue<ContainerAction>> containerActions;
@@ -96,7 +96,7 @@ public class StateContext {
    * @param state  - State
    * @param parent Parent State Machine
    */
-  public StateContext(Configuration conf, DatanodeStateMachine.DatanodeStates
+  public StateContext(ConfigurationSource conf, DatanodeStateMachine.DatanodeStates
       state, DatanodeStateMachine parent) {
     this.conf = conf;
     this.state = state;

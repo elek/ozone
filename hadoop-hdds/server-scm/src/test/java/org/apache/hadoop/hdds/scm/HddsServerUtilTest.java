@@ -19,25 +19,23 @@
 
 package org.apache.hadoop.hdds.scm;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hdds.conf.OzoneConfiguration;
-import org.apache.hadoop.hdds.utils.HddsServerUtil;
-
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
-import org.junit.rules.Timeout;
-
 import java.net.InetSocketAddress;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
+
+import org.apache.hadoop.hdds.conf.OzoneConfiguration;
+import org.apache.hadoop.hdds.utils.HddsServerUtil;
 
 import static org.apache.hadoop.hdds.HddsUtils.getSCMAddresses;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.ExpectedException;
+import org.junit.rules.Timeout;
 
 /**
  * Test the HDDS server side utilities.
@@ -56,7 +54,7 @@ public class HddsServerUtilTest {
    */
   @Test
   public void testMissingScmDataNodeAddress() {
-    final Configuration conf = new OzoneConfiguration();
+    final OzoneConfiguration conf = new OzoneConfiguration();
     thrown.expect(IllegalArgumentException.class);
     HddsServerUtil.getScmAddressForDataNodes(conf);
   }
@@ -68,7 +66,7 @@ public class HddsServerUtilTest {
    */
   @Test
   public void testGetScmDataNodeAddress() {
-    final Configuration conf = new OzoneConfiguration();
+    final OzoneConfiguration conf = new OzoneConfiguration();
 
     // First try a client address with just a host name. Verify it falls
     // back to the default port.
@@ -116,7 +114,7 @@ public class HddsServerUtilTest {
    */
   @Test
   public void testScmClientBindHostDefault() {
-    final Configuration conf = new OzoneConfiguration();
+    final OzoneConfiguration conf = new OzoneConfiguration();
 
     // The bind host should be 0.0.0.0 unless OZONE_SCM_CLIENT_BIND_HOST_KEY
     // is set differently.
@@ -162,7 +160,7 @@ public class HddsServerUtilTest {
    */
   @Test
   public void testScmDataNodeBindHostDefault() {
-    final Configuration conf = new OzoneConfiguration();
+    final OzoneConfiguration conf = new OzoneConfiguration();
 
     // The bind host should be 0.0.0.0 unless OZONE_SCM_DATANODE_BIND_HOST_KEY
     // is set differently.
@@ -207,7 +205,7 @@ public class HddsServerUtilTest {
 
   @Test
   public void testGetSCMAddresses() {
-    final Configuration conf = new OzoneConfiguration();
+    final OzoneConfiguration conf = new OzoneConfiguration();
     Collection<InetSocketAddress> addresses = null;
     InetSocketAddress addr = null;
     Iterator<InetSocketAddress> it = null;

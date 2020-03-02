@@ -17,14 +17,14 @@
 
 package org.apache.hadoop.ozone.lease;
 
-import org.apache.hadoop.util.Time;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicLong;
+
+import org.apache.hadoop.hdds.HddsUtils;
 
 /**
  * This class represents the lease created on a resource. Callback can be
@@ -66,7 +66,7 @@ public class Lease<T> {
     this.resource = resource;
     this.leaseTimeout = new AtomicLong(timeout);
     this.callbacks = Collections.synchronizedList(new ArrayList<>());
-    this.creationTime = Time.monotonicNow();
+    this.creationTime = HddsUtils.monotonicNow();
     this.expired = false;
   }
 
@@ -107,7 +107,7 @@ public class Lease<T> {
     if(hasExpired()) {
       throw new LeaseExpiredException(messageForResource(resource));
     }
-    return Time.monotonicNow() - creationTime;
+    return HddsUtils.monotonicNow() - creationTime;
   }
 
   /**

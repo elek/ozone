@@ -23,6 +23,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdds.HddsUtils;
 import org.apache.hadoop.hdds.cli.GenericCli;
 import org.apache.hadoop.hdds.cli.HddsVersionProvider;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.scm.ScmConfigKeys;
 import org.apache.hadoop.hdds.scm.cli.container.ContainerCommands;
@@ -86,7 +87,7 @@ public class SCMCLI extends GenericCli {
 
   public ScmClient createScmClient()
       throws IOException {
-    OzoneConfiguration ozoneConf = createOzoneConfiguration();
+    ConfigurationSource ozoneConf = createOzoneConfiguration();
     checkAndSetSCMAddressArg(ozoneConf);
 
 
@@ -103,7 +104,7 @@ public class SCMCLI extends GenericCli {
     }
   }
 
-  private void checkAndSetSCMAddressArg(Configuration conf) {
+  private void checkAndSetSCMAddressArg(ConfigurationSource conf) {
     if (StringUtils.isNotEmpty(scm)) {
       conf.set(OZONE_SCM_CLIENT_ADDRESS_KEY, scm);
     }

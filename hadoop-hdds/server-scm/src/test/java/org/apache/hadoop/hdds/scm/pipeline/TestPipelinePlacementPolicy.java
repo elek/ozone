@@ -18,23 +18,30 @@
 
 package org.apache.hadoop.hdds.scm.pipeline;
 
-import org.apache.hadoop.conf.Configuration;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
 import org.apache.hadoop.hdds.scm.ScmConfigKeys;
 import org.apache.hadoop.hdds.scm.container.MockNodeManager;
 import org.apache.hadoop.hdds.scm.exceptions.SCMException;
-import org.apache.hadoop.hdds.scm.net.*;
+import org.apache.hadoop.hdds.scm.net.NetConstants;
+import org.apache.hadoop.hdds.scm.net.NetworkTopology;
+import org.apache.hadoop.hdds.scm.net.NetworkTopologyImpl;
+import org.apache.hadoop.hdds.scm.net.Node;
+import org.apache.hadoop.hdds.scm.net.NodeImpl;
 import org.apache.hadoop.hdds.scm.node.states.Node2PipelineMap;
+
+import static org.apache.hadoop.hdds.scm.ScmConfigKeys.OZONE_DATANODE_PIPELINE_LIMIT;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.util.*;
-import java.util.stream.Collectors;
-
-import static org.apache.hadoop.hdds.scm.ScmConfigKeys.OZONE_DATANODE_PIPELINE_LIMIT;
 
 /**
  * Test for PipelinePlacementPolicy.
@@ -123,7 +130,8 @@ public class TestPipelinePlacementPolicy {
     Assert.assertTrue(anchor.getNetworkLocation().equals(
         randomNode.getNetworkLocation()));
 
-    NetworkTopology topology = new NetworkTopologyImpl(new Configuration());
+    NetworkTopology topology =
+        new NetworkTopologyImpl(new OzoneConfiguration());
     DatanodeDetails nextNode = placementPolicy.chooseNodeBasedOnRackAwareness(
         healthyNodes, new ArrayList<>(PIPELINE_PLACEMENT_MAX_NODES_COUNT),
         topology, anchor);
@@ -156,7 +164,8 @@ public class TestPipelinePlacementPolicy {
 
 
   private NetworkTopology createNetworkTopologyOnDifRacks() {
-    NetworkTopology topology = new NetworkTopologyImpl(new Configuration());
+    NetworkTopology topology =
+        new NetworkTopologyImpl(new OzoneConfiguration());
     for (Node n : NODES) {
       topology.add(n);
     }

@@ -43,6 +43,7 @@ public class S3SecretManagerImpl implements S3SecretManager {
    * OMMetadataManager is used for accessing OM MetadataDB and ReadWriteLock.
    */
   private final OMMetadataManager omMetadataManager;
+
   private final OzoneConfiguration configuration;
 
   /**

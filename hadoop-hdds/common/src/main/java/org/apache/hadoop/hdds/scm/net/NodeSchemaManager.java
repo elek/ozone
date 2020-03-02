@@ -19,12 +19,12 @@ package org.apache.hadoop.hdds.scm.net;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
+
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.scm.ScmConfigKeys;
 import org.apache.hadoop.hdds.scm.net.NodeSchemaLoader.NodeSchemaLoadResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import org.apache.hadoop.conf.Configuration;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -55,7 +55,7 @@ public final class NodeSchemaManager {
     return instance;
   }
 
-  public void init(Configuration conf) {
+  public void init(ConfigurationSource conf) {
     /**
      * Load schemas from network topology schema configuration file
      */

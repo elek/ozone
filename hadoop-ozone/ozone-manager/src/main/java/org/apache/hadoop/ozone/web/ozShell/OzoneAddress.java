@@ -21,7 +21,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 
-import org.apache.hadoop.hdds.conf.OzoneConfiguration;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.ozone.OmUtils;
 import org.apache.hadoop.ozone.client.OzoneClient;
 import org.apache.hadoop.ozone.client.OzoneClientException;
@@ -30,7 +30,6 @@ import org.apache.hadoop.ozone.client.OzoneClientFactory;
 import static org.apache.hadoop.ozone.OzoneConsts.OZONE_HTTP_SCHEME;
 import static org.apache.hadoop.ozone.OzoneConsts.OZONE_RPC_SCHEME;
 import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_OM_SERVICE_IDS_KEY;
-
 import org.apache.http.client.utils.URIBuilder;
 
 /**
@@ -81,7 +80,7 @@ public class OzoneAddress {
 
   }
 
-  public OzoneClient createClient(OzoneConfiguration conf)
+  public OzoneClient createClient(ConfigurationSource conf)
       throws IOException, OzoneClientException {
     OzoneClient client;
     String scheme = ozoneURI.getScheme();
@@ -134,7 +133,7 @@ public class OzoneAddress {
    * @throws IOException
    * @throws OzoneClientException
    */
-  public OzoneClient  createClientForS3Commands(OzoneConfiguration conf,
+  public OzoneClient  createClientForS3Commands(ConfigurationSource conf,
       String omServiceID)
       throws IOException, OzoneClientException {
     if (omServiceID != null) {

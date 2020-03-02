@@ -24,7 +24,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.ozone.OzoneConfigKeys;
 
@@ -52,11 +52,11 @@ public class MetadataStoreBuilder {
   private File dbFile;
   private long cacheSize;
   private boolean createIfMissing = true;
-  private Optional<Configuration> optionalConf = Optional.empty();
+  private Optional<ConfigurationSource> optionalConf = Optional.empty();
   private String dbType;
   @VisibleForTesting
-  public static final Map<Configuration, org.rocksdb.Options> CACHED_OPTS =
-      new ConcurrentHashMap<>();
+  public static final Map<ConfigurationSource, org.rocksdb.Options>
+      CACHED_OPTS = new ConcurrentHashMap<>();
   @VisibleForTesting
   public static final OzoneConfiguration DEFAULT_CONF =
       new OzoneConfiguration();
@@ -80,7 +80,7 @@ public class MetadataStoreBuilder {
     return this;
   }
 
-  public MetadataStoreBuilder setConf(Configuration configuration) {
+  public MetadataStoreBuilder setConf(ConfigurationSource configuration) {
     this.optionalConf = Optional.of(configuration);
     return this;
   }
@@ -102,7 +102,7 @@ public class MetadataStoreBuilder {
     }
 
     // Build db store based on configuration
-    final Configuration conf = optionalConf.orElse(DEFAULT_CONF);
+    final ConfigurationSource conf = optionalConf.orElse(DEFAULT_CONF);
 
     if (dbType == null) {
       LOG.debug("dbType is null, using ");

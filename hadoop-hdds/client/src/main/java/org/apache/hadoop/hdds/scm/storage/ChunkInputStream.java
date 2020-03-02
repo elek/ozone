@@ -18,26 +18,27 @@
 
 package org.apache.hadoop.hdds.scm.storage;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Preconditions;
+import java.io.EOFException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.util.List;
+
 import org.apache.hadoop.fs.Seekable;
 import org.apache.hadoop.hdds.client.BlockID;
+import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.ChunkInfo;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.ContainerCommandRequestProto;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.ContainerCommandResponseProto;
-import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.ChunkInfo;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.ReadChunkResponseProto;
 import org.apache.hadoop.hdds.scm.XceiverClientSpi;
 import org.apache.hadoop.hdds.scm.container.common.helpers.StorageContainerException;
 import org.apache.hadoop.ozone.common.Checksum;
 import org.apache.hadoop.ozone.common.ChecksumData;
 import org.apache.hadoop.ozone.common.OzoneChecksumException;
-import org.apache.ratis.thirdparty.com.google.protobuf.ByteString;
 
-import java.io.EOFException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.ByteBuffer;
-import java.util.List;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
+import org.apache.ratis.thirdparty.com.google.protobuf.ByteString;
 
 /**
  * An {@link InputStream} called from BlockInputStream to read a chunk from the
@@ -331,7 +332,7 @@ public class ChunkInputStream extends InputStream implements Seekable {
           ContainerProtocolCalls.getValidatorList();
       validators.add(validator);
 
-      readChunkResponse = ContainerProtocolCalls.readChunk(xceiverClient,
+      readChunkResponse = ContainerProtocolUtils.readChunk(xceiverClient,
           readChunkInfo, blockID, validators);
 
     } catch (IOException e) {

@@ -25,7 +25,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import org.apache.commons.collections.CollectionUtils;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.crypto.key.KeyProvider;
@@ -35,7 +34,6 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdds.client.ReplicationFactor;
 import org.apache.hadoop.hdds.client.ReplicationType;
-import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
 import org.apache.hadoop.hdds.security.x509.SecurityConfig;
 import org.apache.hadoop.io.Text;
@@ -57,6 +55,7 @@ import org.apache.hadoop.ozone.security.OzoneTokenIdentifier;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.security.token.TokenRenewer;
 
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -94,18 +93,18 @@ public class BasicOzoneClientAdapterImpl implements OzoneClientAdapter {
     this(createConf(), volumeStr, bucketStr);
   }
 
-  private static OzoneConfiguration createConf() {
+  private static Configuration createConf() {
     ClassLoader contextClassLoader =
         Thread.currentThread().getContextClassLoader();
     Thread.currentThread().setContextClassLoader(null);
     try {
-      return new OzoneConfiguration();
+      return CompatibleOzoneConfiguration.createConfiguration();
     } finally {
       Thread.currentThread().setContextClassLoader(contextClassLoader);
     }
   }
 
-  public BasicOzoneClientAdapterImpl(OzoneConfiguration conf, String volumeStr,
+  public BasicOzoneClientAdapterImpl(Configuration conf, String volumeStr,
       String bucketStr)
       throws IOException {
     this(null, -1, conf, volumeStr, bucketStr);
@@ -120,7 +119,8 @@ public class BasicOzoneClientAdapterImpl implements OzoneClientAdapter {
     Thread.currentThread().setContextClassLoader(null);
 
     try {
-      OzoneConfiguration conf = OzoneConfiguration.of(hadoopConf);
+      CompatibleOzoneConfiguration conf =
+          CompatibleOzoneConfiguration.of(hadoopConf);
 
       if (omHost == null && OmUtils.isServiceIdsDefined(conf)) {
         // When the host name or service id isn't given
@@ -374,7 +374,7 @@ public class BasicOzoneClientAdapterImpl implements OzoneClientAdapter {
     //Ensure that OzoneConfiguration files are loaded before trying to use
     // the renewer.
     static {
-      OzoneConfiguration.activate();
+      CompatibleOzoneConfiguration.activate();
     }
 
     public Text getKind() {
@@ -397,7 +397,8 @@ public class BasicOzoneClientAdapterImpl implements OzoneClientAdapter {
       Token<OzoneTokenIdentifier> ozoneDt =
           (Token<OzoneTokenIdentifier>) token;
       OzoneClient ozoneClient =
-          OzoneClientFactory.getRpcClient(conf);
+          OzoneClientFactory
+              .getRpcClient(new CompatibleOzoneConfiguration(conf));
       return ozoneClient.getObjectStore().renewDelegationToken(ozoneDt);
     }
 
@@ -407,7 +408,8 @@ public class BasicOzoneClientAdapterImpl implements OzoneClientAdapter {
       Token<OzoneTokenIdentifier> ozoneDt =
           (Token<OzoneTokenIdentifier>) token;
       OzoneClient ozoneClient =
-          OzoneClientFactory.getRpcClient(conf);
+          OzoneClientFactory
+              .getRpcClient(new CompatibleOzoneConfiguration(conf));
       ozoneClient.getObjectStore().cancelDelegationToken(ozoneDt);
     }
   }

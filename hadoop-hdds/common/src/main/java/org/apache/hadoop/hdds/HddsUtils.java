@@ -18,12 +18,10 @@
 
 package org.apache.hadoop.hdds;
 
-import javax.management.ObjectName;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
+import java.io.InputStream;
+import java.lang.reflect.Constructor;
 import java.net.InetSocketAddress;
-import java.net.UnknownHostException;
 import java.nio.file.Path;
 import java.util.Calendar;
 import java.util.Collection;
@@ -32,28 +30,22 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.TimeZone;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.hadoop.hdds.annotation.InterfaceAudience;
 import org.apache.hadoop.hdds.annotation.InterfaceStability;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.CommonConfigurationKeysPublic;
 import org.apache.hadoop.hdds.client.BlockID;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.ContainerCommandRequestProto;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.WriteChunkRequestProto;
 import org.apache.hadoop.hdds.scm.ScmConfigKeys;
-import org.apache.hadoop.metrics2.util.MBeans;
-import org.apache.hadoop.net.DNS;
-import org.apache.hadoop.net.NetUtils;
 
 import com.google.common.base.Preconditions;
 import com.google.common.net.HostAndPort;
-import org.apache.commons.lang3.StringUtils;
-import static org.apache.hadoop.hdds.DFSConfigKeysLegacy.DFS_DATANODE_DNS_INTERFACE_KEY;
-import static org.apache.hadoop.hdds.DFSConfigKeysLegacy.DFS_DATANODE_DNS_NAMESERVER_KEY;
-import static org.apache.hadoop.hdds.DFSConfigKeysLegacy.DFS_DATANODE_HOST_NAME_KEY;
 import static org.apache.hadoop.hdds.recon.ReconConfigKeys.OZONE_RECON_ADDRESS_KEY;
 import static org.apache.hadoop.hdds.recon.ReconConfigKeys.OZONE_RECON_DATANODE_PORT_DEFAULT;
+import org.apache.ratis.util.NetUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,6 +56,19 @@ import org.slf4j.LoggerFactory;
 @InterfaceStability.Stable
 public final class HddsUtils {
 
+  private static final Class<?>[] EMPTY_ARRAY = new Class[] {};
+
+  /**
+   * Cache of constructors for each class. Pins the classes so they
+   * can't be garbage collected until ReflectionUtils can be collected.
+   */
+  private static final Map<Class<?>, Constructor<?>> CONSTRUCTOR_CACHE =
+      new ConcurrentHashMap<Class<?>, Constructor<?>>();
+
+  /**
+   * number of nano seconds in 1 millisecond.
+   */
+  private static final long NANOSECONDS_PER_MILLISECOND = 1000000;
 
   private static final Logger LOG = LoggerFactory.getLogger(HddsUtils.class);
 
@@ -90,7 +95,8 @@ public final class HddsUtils {
    *
    * @return Target {@code InetSocketAddress} for the SCM client endpoint.
    */
-  public static InetSocketAddress getScmAddressForClients(Configuration conf) {
+  public static InetSocketAddress getScmAddressForClients(
+      ConfigurationSource conf) {
     Optional<String> host = getHostNameFromConfigKeys(conf,
         ScmConfigKeys.OZONE_SCM_CLIENT_ADDRESS_KEY);
 
@@ -117,7 +123,7 @@ public final class HddsUtils {
    * @throws IllegalArgumentException if configuration is not defined.
    */
   public static InetSocketAddress getScmAddressForBlockClients(
-      Configuration conf) {
+      ConfigurationSource conf) {
     Optional<String> host = getHostNameFromConfigKeys(conf,
         ScmConfigKeys.OZONE_SCM_BLOCK_CLIENT_ADDRESS_KEY,
         ScmConfigKeys.OZONE_SCM_CLIENT_ADDRESS_KEY);
@@ -148,7 +154,8 @@ public final class HddsUtils {
    * @throws IllegalArgumentException if any values are not in the 'host'
    *             or host:port format.
    */
-  public static Optional<String> getHostNameFromConfigKeys(Configuration conf,
+  public static Optional<String> getHostNameFromConfigKeys(
+      ConfigurationSource conf,
       String... keys) {
     for (final String key : keys) {
       final String value = conf.getTrimmed(key);
@@ -207,7 +214,7 @@ public final class HddsUtils {
    *             or host:port format.
    */
   public static OptionalInt getPortNumberFromConfigKeys(
-      Configuration conf, String... keys) {
+      ConfigurationSource conf, String... keys) {
     for (final String key : keys) {
       final String value = conf.getTrimmed(key);
       final OptionalInt hostPort = getHostPort(value);
@@ -225,16 +232,16 @@ public final class HddsUtils {
    * @throws IllegalArgumentException If the configuration is invalid
    */
   public static Collection<InetSocketAddress> getSCMAddresses(
-      Configuration conf) {
-    Collection<String> names =
-        conf.getTrimmedStringCollection(ScmConfigKeys.OZONE_SCM_NAMES);
-    if (names.isEmpty()) {
+      ConfigurationSource conf) {
+    String[] names =
+        conf.getTrimmedStrings(ScmConfigKeys.OZONE_SCM_NAMES);
+    if (names.length == 0) {
       throw new IllegalArgumentException(ScmConfigKeys.OZONE_SCM_NAMES
           + " need to be a set of valid DNS names or IP addresses."
           + " Empty address list found.");
     }
 
-    Collection<InetSocketAddress> addresses = new HashSet<>(names.size());
+    Collection<InetSocketAddress> addresses = new HashSet<>(names.length);
     for (String address : names) {
       Optional<String> hostname = getHostName(address);
       if (!hostname.isPresent()) {
@@ -256,9 +263,9 @@ public final class HddsUtils {
    * @throws IllegalArgumentException If the configuration is invalid
    */
   public static InetSocketAddress getReconAddresses(
-      Configuration conf) {
+      ConfigurationSource conf) {
     String name = conf.get(OZONE_RECON_ADDRESS_KEY);
-    if (StringUtils.isEmpty(name)) {
+    if (name == null || name.length() == 0) {
       return null;
     }
     Optional<String> hostname = getHostName(name);
@@ -278,49 +285,12 @@ public final class HddsUtils {
    * @throws IllegalArgumentException if {@code conf} has more than one SCM
    *         address or it has none
    */
-  public static InetSocketAddress getSingleSCMAddress(Configuration conf) {
+  public static InetSocketAddress getSingleSCMAddress(
+      ConfigurationSource conf) {
     Collection<InetSocketAddress> singleton = getSCMAddresses(conf);
     Preconditions.checkArgument(singleton.size() == 1,
         MULTIPLE_SCM_NOT_YET_SUPPORTED);
     return singleton.iterator().next();
-  }
-
-  /**
-   * Returns the hostname for this datanode. If the hostname is not
-   * explicitly configured in the given config, then it is determined
-   * via the DNS class.
-   *
-   * @param conf Configuration
-   *
-   * @return the hostname (NB: may not be a FQDN)
-   * @throws UnknownHostException if the dfs.datanode.dns.interface
-   *    option is used and the hostname can not be determined
-   */
-  public static String getHostName(Configuration conf)
-      throws UnknownHostException {
-    String name = conf.get(DFS_DATANODE_HOST_NAME_KEY);
-    if (name == null) {
-      String dnsInterface = conf.get(
-          CommonConfigurationKeysPublic.HADOOP_SECURITY_DNS_INTERFACE_KEY);
-      String nameServer = conf.get(
-          CommonConfigurationKeysPublic.HADOOP_SECURITY_DNS_NAMESERVER_KEY);
-      boolean fallbackToHosts = false;
-
-      if (dnsInterface == null) {
-        // Try the legacy configuration keys.
-        dnsInterface = conf.get(DFS_DATANODE_DNS_INTERFACE_KEY);
-        dnsInterface = conf.get(DFS_DATANODE_DNS_INTERFACE_KEY);
-        nameServer = conf.get(DFS_DATANODE_DNS_NAMESERVER_KEY);
-      } else {
-        // If HADOOP_SECURITY_DNS_* is set then also attempt hosts file
-        // resolution if DNS fails. We will not use hosts file resolution
-        // by default to avoid breaking existing clusters.
-        fallbackToHosts = true;
-      }
-
-      name = DNS.getDefaultHost(dnsInterface, nameServer, fallbackToHosts);
-    }
-    return name;
   }
 
   /**
@@ -427,42 +397,6 @@ public final class HddsUtils {
   }
 
   /**
-   * Register the provided MBean with additional JMX ObjectName properties.
-   * If additional properties are not supported then fallback to registering
-   * without properties.
-   *
-   * @param serviceName - see {@link MBeans#register}
-   * @param mBeanName - see {@link MBeans#register}
-   * @param jmxProperties - additional JMX ObjectName properties.
-   * @param mBean - the MBean to register.
-   * @return the named used to register the MBean.
-   */
-  public static ObjectName registerWithJmxProperties(
-      String serviceName, String mBeanName, Map<String, String> jmxProperties,
-      Object mBean) {
-    try {
-
-      // Check support for registering with additional properties.
-      final Method registerMethod = MBeans.class.getMethod(
-          "register", String.class, String.class,
-          Map.class, Object.class);
-
-      return (ObjectName) registerMethod.invoke(
-          null, serviceName, mBeanName, jmxProperties, mBean);
-
-    } catch (NoSuchMethodException | IllegalAccessException |
-        InvocationTargetException e) {
-
-      // Fallback
-      if (LOG.isTraceEnabled()) {
-        LOG.trace("Registering MBean {} without additional properties {}",
-            mBeanName, jmxProperties);
-      }
-      return MBeans.register(serviceName, mBeanName, mBean);
-    }
-  }
-
-  /**
    * Get the current UTC time in milliseconds.
    * @return the current UTC time in milliseconds.
    */
@@ -528,19 +462,81 @@ public final class HddsUtils {
    * @param alias name of the credential to retreive
    * @return String credential value or null
    */
-  static String getPassword(Configuration conf, String alias) {
+  static String getPassword(ConfigurationSource conf, String alias) {
     String password = null;
     try {
       char[] passchars = conf.getPassword(alias);
       if (passchars != null) {
         password = new String(passchars);
       }
-    } catch (IOException ioe) {
+    } catch (Exception ioe) {
       LOG.warn("Setting password to null since IOException is caught"
           + " when getting password", ioe);
 
       password = null;
     }
     return password;
+  }
+
+  /**
+   * Current time from some arbitrary time base in the past, counting in
+   * milliseconds, and not affected by settimeofday or similar system clock
+   * changes.  This is appropriate to use when computing how much longer to
+   * wait for an interval to expire.
+   * This function can return a negative value and it must be handled correctly
+   * by callers. See the documentation of System#nanoTime for caveats.
+   *
+   * @return a monotonic clock that counts in milliseconds.
+   */
+  public static long monotonicNow() {
+    return System.nanoTime() / NANOSECONDS_PER_MILLISECOND;
+  }
+
+  /**
+   * Convenience method that returns a resource as inputstream from the
+   * classpath using given classloader.
+   * <p>
+   *
+   * @param cl           ClassLoader to be used to retrieve resource.
+   * @param resourceName resource to retrieve.
+   * @return inputstream with the resource.
+   * @throws IOException thrown if resource cannot be loaded
+   */
+  public static InputStream getResourceAsStream(ClassLoader cl,
+      String resourceName)
+      throws IOException {
+    if (cl == null) {
+      throw new IOException("Can not read resource file '" + resourceName +
+          "' because given class loader is null");
+    }
+    InputStream is = cl.getResourceAsStream(resourceName);
+    if (is == null) {
+      throw new IOException("Can not read resource file '" +
+          resourceName + "'");
+    }
+    return is;
+  }
+
+  /**
+   * Create an object for the given class.
+   *
+   * @param theClass class of which an object is created
+   * @return a new object
+   */
+  @SuppressWarnings("unchecked")
+  public static <T> T newInstance(Class<T> theClass) {
+    T result;
+    try {
+      Constructor<T> meth = (Constructor<T>) CONSTRUCTOR_CACHE.get(theClass);
+      if (meth == null) {
+        meth = theClass.getDeclaredConstructor(EMPTY_ARRAY);
+        meth.setAccessible(true);
+        CONSTRUCTOR_CACHE.put(theClass, meth);
+      }
+      result = meth.newInstance();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+    return result;
   }
 }

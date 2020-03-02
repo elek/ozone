@@ -18,7 +18,8 @@
 
 package org.apache.hadoop.hdds.ratis;
 
-import org.apache.hadoop.hdds.conf.OzoneConfiguration;
+import org.apache.hadoop.InMemoryConfigurationSource;
+
 import org.apache.ratis.conf.RaftProperties;
 import org.junit.Assert;
 import org.junit.Test;
@@ -31,7 +32,8 @@ public class TestRatisHelper {
   @Test
   public void testCreateRaftClientProperties() {
 
-    OzoneConfiguration ozoneConfiguration = new OzoneConfiguration();
+    InMemoryConfigurationSource ozoneConfiguration =
+        new InMemoryConfigurationSource();
     ozoneConfiguration.set("hdds.ratis.raft.client.rpc.watch" +
         ".request.timeout", "30s");
     ozoneConfiguration.set("hdds.ratis.raft.client.rpc.request" +
@@ -54,7 +56,8 @@ public class TestRatisHelper {
   @Test
   public void testCreateRaftGrpcPropertiesForClient() {
 
-    OzoneConfiguration ozoneConfiguration = new OzoneConfiguration();
+    InMemoryConfigurationSource ozoneConfiguration =
+        new InMemoryConfigurationSource();
     ozoneConfiguration.set("hdds.ratis.raft.grpc.message.size.max",
         "30MB");
     ozoneConfiguration.set("hdds.ratis.raft.grpc.flow.control" +
@@ -84,7 +87,8 @@ public class TestRatisHelper {
   @Test
   public void testCreateRaftGrpcPropertiesForServer() {
 
-    OzoneConfiguration ozoneConfiguration = new OzoneConfiguration();
+    InMemoryConfigurationSource ozoneConfiguration =
+        new InMemoryConfigurationSource();
     ozoneConfiguration.set("hdds.ratis.raft.grpc.message.size.max",
         "30MB");
     ozoneConfiguration.set("hdds.ratis.raft.grpc.flow.control" +
@@ -116,7 +120,8 @@ public class TestRatisHelper {
   @Test
   public void testCreateRaftServerProperties() {
 
-    OzoneConfiguration ozoneConfiguration = new OzoneConfiguration();
+    InMemoryConfigurationSource ozoneConfiguration =
+        new InMemoryConfigurationSource();
     ozoneConfiguration.set(
         "hdds.ratis.raft.server.rpc.watch.request.timeout", "30s");
     ozoneConfiguration.set(

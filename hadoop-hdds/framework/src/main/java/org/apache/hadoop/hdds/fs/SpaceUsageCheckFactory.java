@@ -17,27 +17,27 @@
  */
 package org.apache.hadoop.hdds.fs;
 
-import org.apache.hadoop.hdds.annotation.InterfaceAudience;
-import org.apache.hadoop.hdds.annotation.InterfaceStability;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hdds.conf.Config;
-import org.apache.hadoop.hdds.conf.ConfigGroup;
-import org.apache.hadoop.hdds.conf.ConfigTag;
-import org.apache.hadoop.hdds.conf.OzoneConfiguration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.File;
 import java.io.UncheckedIOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+
+import org.apache.hadoop.hdds.annotation.InterfaceAudience;
+import org.apache.hadoop.hdds.annotation.InterfaceStability;
+import org.apache.hadoop.hdds.conf.Config;
+import org.apache.hadoop.hdds.conf.ConfigGroup;
+import org.apache.hadoop.hdds.conf.ConfigTag;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Configures disk space checks (du, df, etc.) for HDDS volumes, allowing
  * different implementations and parameters for different volumes.
  * Eg. if a volume has a dedicated disk, it can use the faster
  * df-based implementation.
- *
+ * <p>
  * {@code SpaceUsageCheckFactory} implementations should have
  * a no-arg constructor for config-based instantiation.
  */
@@ -49,15 +49,16 @@ public interface SpaceUsageCheckFactory {
    * Creates configuration for the HDDS volume rooted at {@code dir}.
    *
    * @throws UncheckedIOException if canonical path for {@code dir} cannot be
-   * resolved
+   *                              resolved
    */
   SpaceUsageCheckParams paramsFor(File dir);
 
   /**
    * Updates the factory with global configuration.
+   *
    * @return factory configured with {@code conf}
    */
-  default SpaceUsageCheckFactory setConfiguration(Configuration conf) {
+  default SpaceUsageCheckFactory setConfiguration(ConfigurationSource conf) {
     // override if configurable
     return this;
   }
@@ -68,14 +69,15 @@ public interface SpaceUsageCheckFactory {
    * Defaults to {@link DUFactory} if no class is configured or it cannot be
    * instantiated.
    */
-  static SpaceUsageCheckFactory create(Configuration config) {
-    Conf conf = OzoneConfiguration.of(config).getObject(Conf.class);
+  static SpaceUsageCheckFactory create(ConfigurationSource config) {
+    Conf conf = config.getObject(Conf.class);
     Class<? extends SpaceUsageCheckFactory> aClass = null;
     String className = conf.getClassName();
     if (className != null && !className.isEmpty()) {
       try {
-        aClass = config.getClassByName(className)
-            .asSubclass(SpaceUsageCheckFactory.class);
+        aClass =
+            (Class<? extends SpaceUsageCheckFactory>) SpaceUsageCheckFactory.class
+                .getClassLoader().loadClass(className);
       } catch (ClassNotFoundException | RuntimeException e) {
         Logger log = LoggerFactory.getLogger(SpaceUsageCheckFactory.class);
         log.warn("Error trying to create SpaceUsageCheckFactory: '{}'",
@@ -122,7 +124,7 @@ public interface SpaceUsageCheckFactory {
     @Config(
         key = CLASSNAME_KEY,
         defaultValue = "",
-        tags = { ConfigTag.DATANODE },
+        tags = {ConfigTag.DATANODE},
         description = "The fully qualified name of the factory class that "
             + "creates objects for providing disk space usage information.  It "
             + "should implement the SpaceUsageCheckFactory interface."

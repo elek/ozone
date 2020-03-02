@@ -26,6 +26,8 @@ import org.apache.hadoop.crypto.key.KeyProvider;
 import org.apache.hadoop.crypto.key.KeyProviderCryptoExtension;
 import org.apache.hadoop.crypto.key.KeyProviderCryptoExtension.EncryptedKeyVersion;
 import org.apache.hadoop.fs.FileEncryptionInfo;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
+import org.apache.hadoop.hdds.utils.HddsServerUtil;
 import org.apache.hadoop.hdfs.DFSUtil;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.ozone.om.exceptions.OMException;
@@ -94,7 +96,7 @@ public final class OzoneKMSUtil {
   }
 
   public static URI getKeyProviderUri(UserGroupInformation ugi,
-      URI namespaceUri, String kmsUriSrv, Configuration conf)
+      URI namespaceUri, String kmsUriSrv, ConfigurationSource conf)
       throws IOException {
     URI keyProviderUri = null;
     Credentials credentials = ugi.getCredentials();
@@ -111,7 +113,8 @@ public final class OzoneKMSUtil {
       // from client conf
       if (kmsUriSrv == null) {
         keyProviderUri = KMSUtil.getKeyProviderUri(
-            conf, keyProviderUriKeyName);
+            HddsServerUtil.getLegacyHadoopConfiguration(conf),
+            keyProviderUriKeyName);
       } else if (!kmsUriSrv.isEmpty()) {
         // from om server
         keyProviderUri = URI.create(kmsUriSrv);
@@ -126,12 +129,13 @@ public final class OzoneKMSUtil {
     return keyProviderUri;
   }
 
-  public static KeyProvider getKeyProvider(final Configuration conf,
+  public static KeyProvider getKeyProvider(final ConfigurationSource conf,
       final URI serverProviderUri) throws IOException{
     if (serverProviderUri == null) {
       throw new IOException("KMS serverProviderUri is not configured.");
     }
-    return KMSUtil.createKeyProviderFromUri(conf, serverProviderUri);
+    return KMSUtil.createKeyProviderFromUri(
+        HddsServerUtil.getLegacyHadoopConfiguration(conf), serverProviderUri);
   }
 
   public static CryptoProtocolVersion getCryptoProtocolVersion(
@@ -156,14 +160,17 @@ public final class OzoneKMSUtil {
     }
   }
 
-  public static CryptoCodec getCryptoCodec(Configuration conf,
+  public static CryptoCodec getCryptoCodec(ConfigurationSource conf,
       FileEncryptionInfo feInfo) throws IOException {
     CipherSuite suite = feInfo.getCipherSuite();
     if (suite.equals(CipherSuite.UNKNOWN)) {
       throw new IOException("NameNode specified unknown CipherSuite with ID " +
               suite.getUnknownValue() + ", cannot instantiate CryptoCodec.");
     } else {
-      CryptoCodec codec = CryptoCodec.getInstance(conf, suite);
+      Configuration legacyHadoopConfiguration =
+          HddsServerUtil.getLegacyHadoopConfiguration(conf);
+      CryptoCodec codec =
+          CryptoCodec.getInstance(legacyHadoopConfiguration, suite);
       if (codec == null) {
         throw new OMException("No configuration found for the cipher suite " +
                 suite.getConfigSuffix() + " prefixed with " +

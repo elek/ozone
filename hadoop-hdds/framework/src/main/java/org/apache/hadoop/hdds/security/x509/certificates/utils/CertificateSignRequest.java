@@ -19,7 +19,7 @@
 package org.apache.hadoop.hdds.security.x509.certificates.utils;
 
 import com.google.common.base.Preconditions;
-import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.security.exception.SCMSecurityException;
 import org.apache.hadoop.hdds.security.x509.SecurityConfig;
 import org.apache.hadoop.hdds.security.x509.exceptions.CertificateException;
@@ -154,7 +154,7 @@ public final class CertificateSignRequest {
     private boolean digitalEncryption;
 
     public CertificateSignRequest.Builder setConfiguration(
-        Configuration configuration) {
+        ConfigurationSource configuration) {
       this.config = new SecurityConfig(configuration);
       return this;
     }

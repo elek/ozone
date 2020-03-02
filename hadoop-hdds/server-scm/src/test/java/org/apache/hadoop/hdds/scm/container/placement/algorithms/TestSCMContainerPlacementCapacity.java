@@ -21,7 +21,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
 import org.apache.hadoop.hdds.protocol.MockDatanodeDetails;
@@ -43,7 +42,7 @@ public class TestSCMContainerPlacementCapacity {
   @Test
   public void chooseDatanodes() throws SCMException {
     //given
-    Configuration conf = new OzoneConfiguration();
+    OzoneConfiguration conf = new OzoneConfiguration();
 
     List<DatanodeDetails> datanodes = new ArrayList<>();
     for (int i = 0; i < 7; i++) {

@@ -19,6 +19,9 @@
 package org.apache.hadoop.ozone.container.keyvalue.statemachine.background;
 
 import com.google.common.collect.Lists;
+
+import org.apache.hadoop.hdds.HddsUtils;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.scm.ScmConfigKeys;
 import org.apache.hadoop.hdds.scm.pipeline.PipelineID;
 import org.apache.hadoop.ozone.container.common.impl.ContainerData;
@@ -80,7 +83,7 @@ public class BlockDeletingService extends BackgroundService {
 
   private OzoneContainer ozoneContainer;
   private ContainerDeletionChoosingPolicy containerDeletionPolicy;
-  private final Configuration conf;
+  private final ConfigurationSource conf;
 
   // Throttle number of blocks to delete per task,
   // set to 1 for testing
@@ -96,14 +99,14 @@ public class BlockDeletingService extends BackgroundService {
 
   public BlockDeletingService(OzoneContainer ozoneContainer,
       long serviceInterval, long serviceTimeout, TimeUnit timeUnit,
-      Configuration conf) {
+      ConfigurationSource conf) {
     super("BlockDeletingService", serviceInterval, timeUnit,
         BLOCK_DELETING_SERVICE_CORE_POOL_SIZE, serviceTimeout);
     this.ozoneContainer = ozoneContainer;
-    containerDeletionPolicy = ReflectionUtils.newInstance(conf.getClass(
+    containerDeletionPolicy = HddsUtils.newInstance(conf.getClass(
         ScmConfigKeys.OZONE_SCM_KEY_VALUE_CONTAINER_DELETION_CHOOSING_POLICY,
         TopNOrderedContainerDeletionChoosingPolicy.class,
-        ContainerDeletionChoosingPolicy.class), conf);
+        ContainerDeletionChoosingPolicy.class));
     this.conf = conf;
     this.blockLimitPerTask =
         conf.getInt(OZONE_BLOCK_DELETING_LIMIT_PER_CONTAINER,

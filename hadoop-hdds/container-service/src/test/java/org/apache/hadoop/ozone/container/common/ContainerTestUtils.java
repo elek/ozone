@@ -18,6 +18,8 @@
 package org.apache.hadoop.ozone.container.common;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
+import org.apache.hadoop.hdds.utils.HddsServerUtil;
 import org.apache.hadoop.io.retry.RetryPolicies;
 import org.apache.hadoop.ipc.ProtobufRpcEngine;
 import org.apache.hadoop.ipc.RPC;
@@ -48,17 +50,20 @@ public final class ContainerTestUtils {
    * @return EndPoint
    * @throws Exception
    */
-  public static EndpointStateMachine createEndpoint(Configuration conf,
+  public static EndpointStateMachine createEndpoint(ConfigurationSource conf,
       InetSocketAddress address, int rpcTimeout) throws Exception {
-    RPC.setProtocolEngine(conf, StorageContainerDatanodeProtocolPB.class,
+    Configuration hadoopConfiguration =
+        HddsServerUtil.getLegacyHadoopConfiguration(conf);
+    RPC.setProtocolEngine(hadoopConfiguration,
+        StorageContainerDatanodeProtocolPB.class,
         ProtobufRpcEngine.class);
     long version =
         RPC.getProtocolVersion(StorageContainerDatanodeProtocolPB.class);
 
     StorageContainerDatanodeProtocolPB rpcProxy = RPC.getProtocolProxy(
         StorageContainerDatanodeProtocolPB.class, version,
-        address, UserGroupInformation.getCurrentUser(), conf,
-        NetUtils.getDefaultSocketFactory(conf), rpcTimeout,
+        address, UserGroupInformation.getCurrentUser(), hadoopConfiguration,
+        NetUtils.getDefaultSocketFactory(hadoopConfiguration), rpcTimeout,
         RetryPolicies.TRY_ONCE_THEN_FAIL).getProxy();
 
     StorageContainerDatanodeProtocolClientSideTranslatorPB rpcClient =

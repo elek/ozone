@@ -27,6 +27,7 @@ import java.util.OptionalInt;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdds.DFSConfigKeysLegacy;
 import org.apache.hadoop.hdds.HddsConfigKeys;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.conf.HddsConfServlet;
 import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.net.NetUtils;
@@ -61,7 +62,7 @@ public abstract class BaseHttpServer {
       "org.eclipse.jetty.webapp.basetempdir";
 
   private HttpServer2 httpServer;
-  private final Configuration conf;
+  private final ConfigurationSource conf;
 
   private InetSocketAddress httpAddress;
   private InetSocketAddress httpsAddress;
@@ -75,18 +76,14 @@ public abstract class BaseHttpServer {
 
   private boolean profilerSupport;
 
-  public BaseHttpServer(Configuration conf, String name) throws IOException {
+  public BaseHttpServer(ConfigurationSource conf, String name)
+      throws IOException {
     this.name = name;
     this.conf = conf;
     policy = getHttpPolicy(conf);
     if (isEnabled()) {
       this.httpAddress = getHttpBindAddress();
       this.httpsAddress = getHttpsBindAddress();
-
-      // Avoid registering o.a.h.http.PrometheusServlet in HttpServer2.
-      // TODO: Replace "hadoop.prometheus.endpoint.enabled" with
-      // CommonConfigurationKeysPublic.HADOOP_PROMETHEUS_ENABLED when possible.
-      conf.setBoolean("hadoop.prometheus.endpoint.enabled", false);
 
       HttpServer2.Builder builder = newHttpServer2BuilderForOzone(
           conf, httpAddress, httpsAddress,
@@ -141,7 +138,7 @@ public abstract class BaseHttpServer {
    * Recon to initialize their HTTP / HTTPS server.
    */
   public static HttpServer2.Builder newHttpServer2BuilderForOzone(
-      Configuration conf, final InetSocketAddress httpAddr,
+      ConfigurationSource conf, final InetSocketAddress httpAddr,
       final InetSocketAddress httpsAddr, String name, String spnegoUserNameKey,
       String spnegoKeytabFileKey) throws IOException {
     HttpConfig.Policy policy = getHttpPolicy(conf);
@@ -356,7 +353,7 @@ public abstract class BaseHttpServer {
   /**
    * Load HTTPS-related configuration.
    */
-  public static Configuration loadSslConfiguration(Configuration conf) {
+  public static Configuration loadSslConfiguration(ConfigurationSource conf) {
     Configuration sslConf = new Configuration(false);
 
     sslConf.addResource(conf.get(

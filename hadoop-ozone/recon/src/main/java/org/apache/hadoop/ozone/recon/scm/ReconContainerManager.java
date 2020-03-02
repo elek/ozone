@@ -18,18 +18,19 @@
 
 package org.apache.hadoop.ozone.recon.scm;
 
-import static org.apache.hadoop.ozone.recon.ReconConstants.RECON_SCM_CONTAINER_DB;
-
 import java.io.File;
 import java.io.IOException;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.scm.container.ContainerID;
 import org.apache.hadoop.hdds.scm.container.ContainerInfo;
 import org.apache.hadoop.hdds.scm.container.SCMContainerManager;
 import org.apache.hadoop.hdds.scm.container.common.helpers.ContainerWithPipeline;
 import org.apache.hadoop.hdds.scm.pipeline.PipelineManager;
 import org.apache.hadoop.ozone.recon.ReconUtils;
+
+import static org.apache.hadoop.ozone.recon.ReconConstants.RECON_SCM_CONTAINER_DB;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,12 +55,13 @@ public class ReconContainerManager extends SCMContainerManager {
    * @throws IOException on Failure.
    */
   public ReconContainerManager(
-      Configuration conf, PipelineManager pipelineManager) throws IOException {
+      ConfigurationSource conf, PipelineManager pipelineManager)
+      throws IOException {
     super(conf, pipelineManager);
   }
 
   @Override
-  protected File getContainerDBPath(Configuration conf) {
+  protected File getContainerDBPath(ConfigurationSource conf) {
     File metaDir = ReconUtils.getReconScmDbDir(conf);
     return new File(metaDir, RECON_SCM_CONTAINER_DB);
   }

@@ -17,15 +17,15 @@
  */
 package org.apache.hadoop.ozone.web.ozShell.s3;
 
-import org.apache.hadoop.hdds.conf.OzoneConfiguration;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.ozone.client.OzoneClient;
 import org.apache.hadoop.ozone.web.ozShell.Handler;
 import org.apache.hadoop.ozone.web.ozShell.OzoneAddress;
 import org.apache.hadoop.security.UserGroupInformation;
-import picocli.CommandLine;
-import picocli.CommandLine.Command;
 
 import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_SECURITY_ENABLED_KEY;
+import picocli.CommandLine;
+import picocli.CommandLine.Command;
 
 /**
  * Executes getsecret calls.
@@ -47,7 +47,7 @@ public class GetS3SecretHandler extends Handler {
    */
   @Override
   public Void call() throws Exception {
-    OzoneConfiguration ozoneConfiguration = createOzoneConfiguration();
+    ConfigurationSource ozoneConfiguration = createOzoneConfiguration();
     try (OzoneClient client =
         new OzoneAddress().createClientForS3Commands(ozoneConfiguration,
             omServiceID)) {

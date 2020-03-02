@@ -23,8 +23,9 @@ import java.net.InetSocketAddress;
 import java.util.List;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.conf.StorageUnit;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
+import org.apache.hadoop.hdds.conf.StorageUnit;
 import org.apache.hadoop.hdds.protocol.SCMSecurityProtocol;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.ContainerDataProto;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.ReadContainerResponseProto;
@@ -42,6 +43,7 @@ import org.apache.hadoop.hdds.scm.protocolPB.StorageContainerLocationProtocolPB;
 import org.apache.hadoop.hdds.scm.storage.ContainerProtocolCalls;
 import org.apache.hadoop.hdds.security.x509.SecurityConfig;
 import org.apache.hadoop.hdds.tracing.TracingUtil;
+import org.apache.hadoop.hdds.utils.HddsServerUtil;
 import org.apache.hadoop.ipc.Client;
 import org.apache.hadoop.ipc.ProtobufRpcEngine;
 import org.apache.hadoop.ipc.RPC;
@@ -71,7 +73,7 @@ public class ContainerOperationClient implements ScmClient {
       storageContainerLocationClient;
   private final XceiverClientManager xceiverClientManager;
 
-  public ContainerOperationClient(Configuration conf) throws IOException {
+  public ContainerOperationClient(ConfigurationSource conf) throws IOException {
     storageContainerLocationClient = newContainerRpcClient(conf);
     this.xceiverClientManager = newXCeiverClientManager(conf);
     containerSizeB = (int) conf.getStorageSize(OZONE_SCM_CONTAINER_SIZE,
@@ -88,7 +90,7 @@ public class ContainerOperationClient implements ScmClient {
     }
   }
 
-  private XceiverClientManager newXCeiverClientManager(Configuration conf)
+  private XceiverClientManager newXCeiverClientManager(ConfigurationSource conf)
       throws IOException {
     XceiverClientManager manager;
     if (OzoneSecurityUtil.isSecurityEnabled(conf)) {
@@ -98,7 +100,7 @@ public class ContainerOperationClient implements ScmClient {
       String caCertificate =
           scmSecurityProtocolClient.getCACertificate();
       manager = new XceiverClientManager(conf,
-          OzoneConfiguration.of(conf).getObject(XceiverClientManager
+          conf.getObject(XceiverClientManager
               .ScmClientConfig.class), caCertificate);
     } else {
       manager = new XceiverClientManager(conf);
@@ -107,20 +109,25 @@ public class ContainerOperationClient implements ScmClient {
   }
 
   public static StorageContainerLocationProtocol newContainerRpcClient(
-      Configuration conf) throws IOException {
+      ConfigurationSource conf) throws IOException {
 
     Class<StorageContainerLocationProtocolPB> protocol =
         StorageContainerLocationProtocolPB.class;
 
-    RPC.setProtocolEngine(conf, protocol, ProtobufRpcEngine.class);
+    Configuration legacyHadoopConfiguration =
+        HddsServerUtil.getLegacyHadoopConfiguration(conf);
+    RPC.setProtocolEngine(legacyHadoopConfiguration, protocol,
+        ProtobufRpcEngine.class);
     long version = RPC.getProtocolVersion(protocol);
     InetSocketAddress scmAddress = getScmAddressForClients(conf);
     UserGroupInformation user = UserGroupInformation.getCurrentUser();
-    SocketFactory socketFactory = NetUtils.getDefaultSocketFactory(conf);
-    int rpcTimeOut = Client.getRpcTimeout(conf);
+    SocketFactory socketFactory =
+        NetUtils.getDefaultSocketFactory(legacyHadoopConfiguration);
+    int rpcTimeOut = Client.getRpcTimeout(legacyHadoopConfiguration);
 
     StorageContainerLocationProtocolPB rpcProxy =
-        RPC.getProxy(protocol, version, scmAddress, user, conf,
+        RPC.getProxy(protocol, version, scmAddress, user,
+            legacyHadoopConfiguration,
             socketFactory, rpcTimeOut);
 
     StorageContainerLocationProtocolClientSideTranslatorPB client =

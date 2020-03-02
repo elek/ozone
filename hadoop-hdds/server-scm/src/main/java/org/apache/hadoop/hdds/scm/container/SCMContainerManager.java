@@ -20,6 +20,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.primitives.Longs;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos.ContainerInfoProto;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos.LifeCycleState;
 import org.apache.hadoop.hdds.scm.ScmConfigKeys;
@@ -84,7 +85,7 @@ public class SCMContainerManager implements ContainerManager {
    * @param pipelineManager - {@link PipelineManager}
    * @throws IOException on Failure.
    */
-  public SCMContainerManager(final Configuration conf,
+  public SCMContainerManager(final ConfigurationSource conf,
       PipelineManager pipelineManager) throws IOException {
 
     final File containerDBPath = getContainerDBPath(conf);
@@ -591,7 +592,7 @@ public class SCMContainerManager implements ContainerManager {
     }
   }
 
-  protected File getContainerDBPath(Configuration conf) {
+  protected File getContainerDBPath(ConfigurationSource conf) {
     File metaDir = ServerUtils.getScmDbDir(conf);
     return new File(metaDir, SCM_CONTAINER_DB);
   }

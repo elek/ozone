@@ -22,6 +22,7 @@ import javax.annotation.Nullable;
 
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.fs.SpaceUsageCheckFactory;
 import org.apache.hadoop.fs.StorageType;
 import org.apache.hadoop.hdfs.server.datanode.StorageLocation;
@@ -105,7 +106,7 @@ public class HddsVolume
    */
   public static class Builder {
     private final String volumeRootStr;
-    private Configuration conf;
+    private ConfigurationSource conf;
     private StorageType storageType;
 
     private String datanodeUuid;
@@ -117,7 +118,7 @@ public class HddsVolume
       this.volumeRootStr = rootDirStr;
     }
 
-    public Builder conf(Configuration config) {
+    public Builder conf(ConfigurationSource config) {
       this.conf = config;
       return this;
     }

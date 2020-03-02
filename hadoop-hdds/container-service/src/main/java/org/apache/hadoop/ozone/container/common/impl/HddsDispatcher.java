@@ -22,6 +22,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.hdds.HddsConfigKeys;
 import org.apache.hadoop.hdds.HddsUtils;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos
     .ContainerDataProto;
@@ -52,7 +53,6 @@ import org.apache.hadoop.ozone.container.common.statemachine.StateContext;
 import org.apache.hadoop.ozone.container.common.transport.server.ratis
     .DispatcherContext;
 import org.apache.hadoop.ozone.container.common.volume.VolumeSet;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos
     .ContainerCommandRequestProto;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos
@@ -87,7 +87,7 @@ public class HddsDispatcher implements ContainerDispatcher, Auditor {
   private static final AuditLogger AUDIT =
       new AuditLogger(AuditLoggerType.DNLOGGER);
   private final Map<ContainerType, Handler> handlers;
-  private final Configuration conf;
+  private final ConfigurationSource conf;
   private final ContainerSet containerSet;
   private final VolumeSet volumeSet;
   private final StateContext context;
@@ -101,7 +101,7 @@ public class HddsDispatcher implements ContainerDispatcher, Auditor {
    * Constructs an OzoneContainer that receives calls from
    * XceiverServerHandler.
    */
-  public HddsDispatcher(Configuration config, ContainerSet contSet,
+  public HddsDispatcher(ConfigurationSource config, ContainerSet contSet,
       VolumeSet volumes, Map<ContainerType, Handler> handlers,
       StateContext context, ContainerMetrics metrics,
       TokenVerifier tokenVerifier) {

@@ -18,6 +18,7 @@
 package org.apache.hadoop.hdds.scm.server;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.scm.ScmConfigKeys;
 import org.apache.hadoop.hdds.server.http.BaseHttpServer;
 
@@ -28,7 +29,7 @@ import java.io.IOException;
  */
 public class StorageContainerManagerHttpServer extends BaseHttpServer {
 
-  public StorageContainerManagerHttpServer(Configuration conf)
+  public StorageContainerManagerHttpServer(ConfigurationSource conf)
       throws IOException {
     super(conf, "scm");
   }

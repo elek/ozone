@@ -17,7 +17,7 @@
 
 package org.apache.hadoop.ozone.container.common.volume;
 
-import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.fs.SpaceUsageCheckFactory;
 import org.apache.hadoop.hdds.fs.SpaceUsagePersistence;
 import org.apache.hadoop.hdds.fs.SpaceUsageSource;
@@ -50,7 +50,7 @@ public class TestHddsVolume {
 
   private static final String DATANODE_UUID = UUID.randomUUID().toString();
   private static final String CLUSTER_ID = UUID.randomUUID().toString();
-  private static final Configuration CONF = new Configuration();
+  private static final OzoneConfiguration CONF = new OzoneConfiguration();
 
   @Rule
   public TemporaryFolder folder = new TemporaryFolder();
