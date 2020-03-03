@@ -269,7 +269,7 @@ public class OmMetadataManagerImpl implements OMMetadataManager {
     }
   }
 
-  protected DBStoreBuilder addOMTablesAndCodecs(DBStoreBuilder builder) {
+  public static DBStoreBuilder addOMTablesAndCodecs(DBStoreBuilder builder) {
 
     return builder.addTable(USER_TABLE)
         .addTable(VOLUME_TABLE)

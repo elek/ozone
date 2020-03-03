@@ -89,7 +89,7 @@ public class SCMContainerManager implements ContainerManager {
       PipelineManager pipelineManager)
       throws IOException {
 
-    final File containerDBPath = getContainerDBPath(conf);
+    final File containerDBPath = SCMContainerManager.getContainerDBPath(conf);
     final int cacheSize = conf.getInt(OZONE_SCM_DB_CACHE_SIZE_MB,
         OZONE_SCM_DB_CACHE_SIZE_DEFAULT);
 
@@ -612,7 +612,7 @@ public class SCMContainerManager implements ContainerManager {
     }
   }
 
-  protected File getContainerDBPath(Configuration conf) {
+  public static File getContainerDBPath(Configuration conf) {
     File metaDir = ServerUtils.getScmDbDir(conf);
     return new File(metaDir, SCM_CONTAINER_DB);
   }

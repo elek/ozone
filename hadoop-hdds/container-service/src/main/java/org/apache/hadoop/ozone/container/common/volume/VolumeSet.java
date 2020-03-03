@@ -312,7 +312,7 @@ public class VolumeSet {
   }
 
 
-  private HddsVolume createVolume(String locationString,
+  public HddsVolume createVolume(String locationString,
       StorageType storageType) throws IOException {
     HddsVolume.Builder volumeBuilder = new HddsVolume.Builder(locationString)
         .conf(conf)

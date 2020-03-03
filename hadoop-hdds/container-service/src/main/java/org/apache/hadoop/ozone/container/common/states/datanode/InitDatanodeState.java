@@ -109,8 +109,8 @@ public class InitDatanodeState implements DatanodeState,
       }
       InetSocketAddress reconAddress = getReconAddresses(conf);
       if (reconAddress != null) {
-        connectionManager.addReconServer(reconAddress);
-        this.context.addEndpoint(reconAddress.toString());
+//        connectionManager.addReconServer(reconAddress);
+//        this.context.addEndpoint(reconAddress.toString());
       }
     }
 

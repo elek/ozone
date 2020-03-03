@@ -58,8 +58,7 @@ public class ReconContainerManager extends SCMContainerManager {
     super(conf, pipelineManager);
   }
 
-  @Override
-  protected File getContainerDBPath(Configuration conf) {
+  public static File getContainerDBPath(Configuration conf) {
     File metaDir = ReconUtils.getReconScmDbDir(conf);
     return new File(metaDir, RECON_SCM_CONTAINER_DB);
   }
