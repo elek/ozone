@@ -27,6 +27,7 @@ import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.ChecksumDa
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.ChecksumType;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.ChunkInfo;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.ContainerCommandRequestProto;
+import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.ContainerCommandResponseProto;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.DatanodeBlockID;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.Type;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.WriteChunkRequestProto;
@@ -66,11 +67,6 @@ public class DatanodeChunkGenerator extends BaseFreonGenerator implements
   private static final Logger LOG =
       LoggerFactory.getLogger(DatanodeChunkGenerator.class);
 
-  @Option(names = {"-a", "--async"},
-      description = "Use async operation.",
-      defaultValue = "false")
-  private boolean async;
-
   @Option(names = {"-s", "--size"},
       description = "Size of the generated chunks (in bytes)",
       defaultValue = "1024")
@@ -82,14 +78,24 @@ public class DatanodeChunkGenerator extends BaseFreonGenerator implements
       defaultValue = "")
   private String pipelineId;
 
+  @Option(names = {"--watch-commit"},
+      description = "Watch commit after every time after this number of write"
+          + " chunk (0=never)",
+      defaultValue = "0")
+  private int watchCommitPerChunk;
+
+
   private XceiverClientSpi xceiverClientSpi;
 
   private Timer timer;
 
   private ByteString dataToWrite;
+
   private ChecksumData checksumProtobuf;
   private long chunkPerContainer;
   private long chunkPerBlock;
+
+  private long maxIndex;
 
   @Override
   public Void call() throws Exception {
@@ -152,6 +158,9 @@ public class DatanodeChunkGenerator extends BaseFreonGenerator implements
         timer = getMetrics().timer("chunk-write");
 
         runTests(this::writeChunk);
+
+        //wait until all the messages are committed
+        xceiverClientSpi.watchForCommit(maxIndex);
       }
     } finally {
       if (xceiverClientSpi != null) {
@@ -204,17 +213,15 @@ public class DatanodeChunkGenerator extends BaseFreonGenerator implements
     ContainerCommandRequestProto request = builder.build();
 
     timer.time(() -> {
-      if (async) {
-        XceiverClientReply xceiverClientReply =
-            xceiverClientSpi.sendCommandAsync(request);
-        xceiverClientSpi
-            .watchForCommit(xceiverClientReply.getLogIndex());
-
-      } else {
-        xceiverClientSpi.sendCommand(request);
-      }
+      XceiverClientReply xceiverClientReply =
+          xceiverClientSpi.sendCommandAsync(request);
+      maxIndex = Math.max(xceiverClientReply.getLogIndex(), maxIndex);
       return null;
     });
+
+    if (watchCommitPerChunk > 0 && (stepNo + 1) % watchCommitPerChunk == 0) {
+      xceiverClientSpi.watchForCommit(maxIndex);
+    }
 
   }
 
