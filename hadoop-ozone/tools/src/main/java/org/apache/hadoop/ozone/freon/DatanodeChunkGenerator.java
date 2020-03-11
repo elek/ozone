@@ -20,6 +20,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.Callable;
 
+import org.apache.hadoop.conf.StorageUnit;
 import org.apache.hadoop.hdds.cli.HddsVersionProvider;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.ChecksumData;
@@ -40,6 +41,10 @@ import org.apache.hadoop.ozone.common.Checksum;
 
 import com.codahale.metrics.Timer;
 import org.apache.commons.lang3.RandomStringUtils;
+import static org.apache.hadoop.hdds.scm.ScmConfigKeys.OZONE_SCM_CONTAINER_SIZE;
+import static org.apache.hadoop.hdds.scm.ScmConfigKeys.OZONE_SCM_CONTAINER_SIZE_DEFAULT;
+import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_SCM_BLOCK_SIZE;
+import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_SCM_BLOCK_SIZE_DEFAULT;
 import org.apache.ratis.thirdparty.com.google.protobuf.ByteString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -83,6 +88,8 @@ public class DatanodeChunkGenerator extends BaseFreonGenerator implements
 
   private ByteString dataToWrite;
   private ChecksumData checksumProtobuf;
+  private long chunkPerContainer;
+  private long chunkPerBlock;
 
   @Override
   public Void call() throws Exception {
@@ -90,6 +97,19 @@ public class DatanodeChunkGenerator extends BaseFreonGenerator implements
     init();
 
     OzoneConfiguration ozoneConf = createOzoneConfiguration();
+
+    long containerSize =
+        (long) ozoneConf.getStorageSize(OZONE_SCM_CONTAINER_SIZE,
+            OZONE_SCM_CONTAINER_SIZE_DEFAULT,
+            StorageUnit.BYTES);
+
+    long blockSize = (long) ozoneConf
+        .getStorageSize(OZONE_SCM_BLOCK_SIZE, OZONE_SCM_BLOCK_SIZE_DEFAULT,
+            StorageUnit.BYTES);
+
+    chunkPerContainer = (long) (containerSize * 0.8) / chunkSize;
+    chunkPerBlock = blockSize / chunkSize;
+
     if (OzoneSecurityUtil.isSecurityEnabled(ozoneConf)) {
       throw new IllegalArgumentException(
           "Datanode chunk generator is not supported in secure environment");
@@ -121,8 +141,6 @@ public class DatanodeChunkGenerator extends BaseFreonGenerator implements
                new XceiverClientManager(ozoneConf)) {
         xceiverClientSpi = xceiverClientManager.acquireClient(pipeline);
 
-        timer = getMetrics().timer("chunk-write");
-
         byte[] data = RandomStringUtils.randomAscii(chunkSize)
             .getBytes(StandardCharsets.UTF_8);
 
@@ -130,6 +148,8 @@ public class DatanodeChunkGenerator extends BaseFreonGenerator implements
 
         Checksum checksum = new Checksum(ChecksumType.CRC32, chunkSize);
         checksumProtobuf = checksum.computeChecksum(data).getProtoBufMessage();
+
+        timer = getMetrics().timer("chunk-write");
 
         runTests(this::writeChunk);
       }
@@ -144,16 +164,22 @@ public class DatanodeChunkGenerator extends BaseFreonGenerator implements
   private void writeChunk(long stepNo)
       throws Exception {
 
-    //Always use this fake blockid.
+    final int threadID = getThreadId();
+
+    //ChunkManagerImpl expects to get the the chunk writes in order (by
+    // logical offset) to make it possible to save them to the same file.
+    // With using threadId one block will be used only by one thread.
+    long blockLocalId = (stepNo / chunkPerBlock) * getThreadNo() + threadID;
+
     DatanodeBlockID blockId = DatanodeBlockID.newBuilder()
-        .setContainerID(1L)
-        .setLocalID(stepNo % 20)
+        .setContainerID(stepNo / chunkPerContainer + 1)
+        .setLocalID(blockLocalId)
         .setBlockCommitSequenceId(stepNo)
         .build();
 
     ChunkInfo chunkInfo = ChunkInfo.newBuilder()
         .setChunkName(getPrefix() + "_testdata_chunk_" + stepNo)
-        .setOffset((stepNo / 20) * chunkSize)
+        .setOffset((stepNo - blockLocalId * chunkPerBlock) * chunkSize)
         .setLen(chunkSize)
         .setChecksumData(checksumProtobuf)
         .build();
@@ -176,6 +202,7 @@ public class DatanodeChunkGenerator extends BaseFreonGenerator implements
             .setWriteChunk(writeChunkRequest);
 
     ContainerCommandRequestProto request = builder.build();
+
     timer.time(() -> {
       if (async) {
         XceiverClientReply xceiverClientReply =

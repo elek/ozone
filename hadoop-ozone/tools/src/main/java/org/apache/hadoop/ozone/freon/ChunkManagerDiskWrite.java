@@ -153,9 +153,7 @@ public class ChunkManagerDiskWrite extends BaseFreonGenerator implements
   }
 
   private void writeChunk(long l) {
-    //based on the thread naming convention: pool-N-thread-M
-    final int threadID =
-        Integer.parseInt(Thread.currentThread().getName().split("-")[3]);
+    final int threadID = getThreadId();
     KeyValueContainer container = containersPerThread.get(threadID);
     final long containerID = container.getContainerData().getContainerID();
     final long bytesWritten = bytesWrittenInThread.get().getAndAdd(chunkSize);

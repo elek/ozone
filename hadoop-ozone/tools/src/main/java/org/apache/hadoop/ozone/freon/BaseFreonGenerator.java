@@ -459,4 +459,14 @@ public class BaseFreonGenerator {
       return OzoneClientFactory.getRpcClient(conf);
     }
   }
+
+  /**
+   * Get the current numeric identifier of the thread.
+   * <p>
+   * Based on naming convention of the thread pool.
+   */
+  public int getThreadId() {
+    //based on the thread naming convention: pool-N-thread-M
+    return Integer.parseInt(Thread.currentThread().getName().split("-")[3]);
+  }
 }
