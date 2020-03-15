@@ -27,7 +27,6 @@ import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.ChecksumDa
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.ChecksumType;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.ChunkInfo;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.ContainerCommandRequestProto;
-import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.ContainerCommandResponseProto;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.DatanodeBlockID;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.Type;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.WriteChunkRequestProto;
@@ -84,6 +83,12 @@ public class DatanodeChunkGenerator extends BaseFreonGenerator implements
       defaultValue = "0")
   private int watchCommitPerChunk;
 
+  @Option(names = {"--chunk-per-block"},
+      description = "Number of chunks in one block.",
+      defaultValue = "1")
+  private long chunkPerBlock;
+
+  private long blockPerContainer;
 
   private XceiverClientSpi xceiverClientSpi;
 
@@ -92,8 +97,7 @@ public class DatanodeChunkGenerator extends BaseFreonGenerator implements
   private ByteString dataToWrite;
 
   private ChecksumData checksumProtobuf;
-  private long chunkPerContainer;
-  private long chunkPerBlock;
+
 
   private long maxIndex;
 
@@ -113,7 +117,7 @@ public class DatanodeChunkGenerator extends BaseFreonGenerator implements
         .getStorageSize(OZONE_SCM_BLOCK_SIZE, OZONE_SCM_BLOCK_SIZE_DEFAULT,
             StorageUnit.BYTES);
 
-    chunkPerContainer = (long) (containerSize * 0.8) / chunkSize;
+    blockPerContainer = (long) (containerSize * 0.8) / chunkSize;
     chunkPerBlock = blockSize / chunkSize;
 
     if (OzoneSecurityUtil.isSecurityEnabled(ozoneConf)) {
@@ -157,7 +161,7 @@ public class DatanodeChunkGenerator extends BaseFreonGenerator implements
 
         timer = getMetrics().timer("chunk-write");
 
-        runTests(this::writeChunk);
+        runTests(this::writeChunks);
 
         //wait until all the messages are committed
         xceiverClientSpi.watchForCommit(maxIndex);
@@ -170,57 +174,54 @@ public class DatanodeChunkGenerator extends BaseFreonGenerator implements
     return null;
   }
 
-  private void writeChunk(long stepNo)
+  private void writeChunks(long stepNo)
       throws Exception {
 
-    final int threadID = getThreadId();
+    long containerId = stepNo / blockPerContainer + 1;
+    long blockLocalId = stepNo + 1;
 
-    //ChunkManagerImpl expects to get the the chunk writes in order (by
-    // logical offset) to make it possible to save them to the same file.
-    // With using threadId one block will be used only by one thread.
-    long blockLocalId = (stepNo / chunkPerBlock) * getThreadNo() + threadID;
+    for (int i = 0; i < chunkPerBlock; i++) {
+      DatanodeBlockID blockId = DatanodeBlockID.newBuilder()
+          .setContainerID(containerId)
+          .setLocalID(blockLocalId)
+          .setBlockCommitSequenceId(stepNo)
+          .build();
 
-    DatanodeBlockID blockId = DatanodeBlockID.newBuilder()
-        .setContainerID(stepNo / chunkPerContainer + 1)
-        .setLocalID(blockLocalId)
-        .setBlockCommitSequenceId(stepNo)
-        .build();
+      ChunkInfo chunkInfo = ChunkInfo.newBuilder()
+          .setChunkName(getPrefix() + "_testdata_chunk_" + stepNo)
+          .setOffset((stepNo - blockLocalId * chunkPerBlock) * chunkSize)
+          .setLen(chunkSize)
+          .setChecksumData(checksumProtobuf)
+          .build();
 
-    ChunkInfo chunkInfo = ChunkInfo.newBuilder()
-        .setChunkName(getPrefix() + "_testdata_chunk_" + stepNo)
-        .setOffset((stepNo - blockLocalId * chunkPerBlock) * chunkSize)
-        .setLen(chunkSize)
-        .setChecksumData(checksumProtobuf)
-        .build();
+      WriteChunkRequestProto.Builder writeChunkRequest =
+          WriteChunkRequestProto
+              .newBuilder()
+              .setBlockID(blockId)
+              .setChunkData(chunkInfo)
+              .setData(dataToWrite);
 
-    WriteChunkRequestProto.Builder writeChunkRequest =
-        WriteChunkRequestProto
-            .newBuilder()
-            .setBlockID(blockId)
-            .setChunkData(chunkInfo)
-            .setData(dataToWrite);
+      String id = xceiverClientSpi.getPipeline().getFirstNode().getUuidString();
 
-    String id = xceiverClientSpi.getPipeline().getFirstNode().getUuidString();
+      ContainerCommandRequestProto.Builder builder =
+          ContainerCommandRequestProto
+              .newBuilder()
+              .setCmdType(Type.WriteChunk)
+              .setContainerID(blockId.getContainerID())
+              .setDatanodeUuid(id)
+              .setWriteChunk(writeChunkRequest);
 
-    ContainerCommandRequestProto.Builder builder =
-        ContainerCommandRequestProto
-            .newBuilder()
-            .setCmdType(Type.WriteChunk)
-            .setContainerID(blockId.getContainerID())
-            .setDatanodeUuid(id)
-            .setWriteChunk(writeChunkRequest);
+      ContainerCommandRequestProto request = builder.build();
 
-    ContainerCommandRequestProto request = builder.build();
-
-    timer.time(() -> {
-      XceiverClientReply xceiverClientReply =
-          xceiverClientSpi.sendCommandAsync(request);
-      maxIndex = Math.max(xceiverClientReply.getLogIndex(), maxIndex);
-      return null;
-    });
-
-    if (watchCommitPerChunk > 0 && (stepNo + 1) % watchCommitPerChunk == 0) {
-      xceiverClientSpi.watchForCommit(maxIndex);
+      timer.time(() -> {
+        XceiverClientReply xceiverClientReply =
+            xceiverClientSpi.sendCommandAsync(request);
+        maxIndex = Math.max(xceiverClientReply.getLogIndex(), maxIndex);
+        return null;
+      });
+      if ((i + 1) % watchCommitPerChunk == 0) {
+        xceiverClientSpi.watchForCommit(maxIndex);
+      }
     }
 
   }
