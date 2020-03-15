@@ -219,7 +219,7 @@ public class DatanodeChunkGenerator extends BaseFreonGenerator implements
         maxIndex = Math.max(xceiverClientReply.getLogIndex(), maxIndex);
         return null;
       });
-      if ((i + 1) % watchCommitPerChunk == 0) {
+      if ((watchCommitPerChunk > 0) && ((i + 1) % watchCommitPerChunk == 0)) {
         xceiverClientSpi.watchForCommit(maxIndex);
       }
     }
