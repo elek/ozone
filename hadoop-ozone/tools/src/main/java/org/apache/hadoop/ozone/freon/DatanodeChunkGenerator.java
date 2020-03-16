@@ -189,7 +189,7 @@ public class DatanodeChunkGenerator extends BaseFreonGenerator implements
 
       ChunkInfo chunkInfo = ChunkInfo.newBuilder()
           .setChunkName(getPrefix() + "_testdata_chunk_" + stepNo)
-          .setOffset((stepNo - blockLocalId * chunkPerBlock) * chunkSize)
+          .setOffset(i * chunkSize)
           .setLen(chunkSize)
           .setChecksumData(checksumProtobuf)
           .build();
