@@ -147,8 +147,7 @@ public class OMKeyCommitRequest extends OMKeyRequest {
       // enabled.
       if (ozoneManager.isRatisEnabled()) {
         // Check if OzoneKey already exists in DB
-        OmKeyInfo dbKeyInfo = omMetadataManager.getKeyTable()
-            .getIfExist(dbOzoneKey);
+        OmKeyInfo dbKeyInfo = omMetadataManager.getKeyTable().get(dbOzoneKey);
         if (dbKeyInfo != null) {
           // Check if this transaction is a replay of ratis logs
           if (isReplay(ozoneManager, dbKeyInfo, trxnLogIndex)) {

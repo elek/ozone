@@ -215,8 +215,7 @@ public class OMFileCreateRequest extends OMKeyRequest {
       // replay.
       String ozoneKey = omMetadataManager.getOzoneKey(volumeName, bucketName,
           keyName);
-      OmKeyInfo dbKeyInfo = omMetadataManager.getKeyTable()
-          .getIfExist(ozoneKey);
+      OmKeyInfo dbKeyInfo = omMetadataManager.getKeyTable().get(ozoneKey);
       if (dbKeyInfo != null) {
         // Check if this transaction is a replay of ratis logs.
         // We check only the KeyTable here and not the OpenKeyTable. In case

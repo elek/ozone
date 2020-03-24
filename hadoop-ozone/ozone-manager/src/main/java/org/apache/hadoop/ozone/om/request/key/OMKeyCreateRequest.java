@@ -192,8 +192,7 @@ public class OMKeyCreateRequest extends OMKeyRequest {
       // Check if Key already exists
       String dbKeyName = omMetadataManager.getOzoneKey(volumeName, bucketName,
           keyName);
-      OmKeyInfo dbKeyInfo =
-          omMetadataManager.getKeyTable().getIfExist(dbKeyName);
+      OmKeyInfo dbKeyInfo = omMetadataManager.getKeyTable().get(dbKeyName);
       if (dbKeyInfo != null) {
         // Check if this transaction is a replay of ratis logs.
         // We check only the KeyTable here and not the OpenKeyTable. In case
