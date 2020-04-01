@@ -28,7 +28,7 @@ if [ ! -d "$DIST_DIR" ]; then
 fi
 
 cd "$DIST_DIR/compose" || exit 1
-./test-all.sh
+./test-all.sh "$@"
 RES=$?
 cp result/* "$REPORT_DIR/"
 cp "$REPORT_DIR/log.html" "$REPORT_DIR/summary.html"
