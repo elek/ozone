@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-name: acceptance-single
+name: acceptance-topology
 on:
   schedule:
    - cron: '*/30 * * * *'
@@ -28,7 +28,7 @@ jobs:
         - run: sudo pip install robotframework
         - run: sudo chown runner -R .
         - run: cd ./hadoop-ozone/dist/target/ozone-*/ && mkdir .aws && sudo chown 1000 .aws
-        - run: ./hadoop-ozone/dev-support/checks/acceptance.sh ozone-om-ha
+        - run: ./hadoop-ozone/dev-support/checks/acceptance.sh ozone-topology
         - uses: actions/upload-artifact@master
           if: always()
           with:
