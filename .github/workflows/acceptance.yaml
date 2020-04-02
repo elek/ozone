@@ -22,6 +22,8 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
         - uses: actions/checkout@master
+        - name: Setup tmate session
+          uses: mxschmitt/action-tmate@v2
         - uses: ./.github/buildenv
           with:
             args: ./hadoop-ozone/dev-support/checks/build.sh
