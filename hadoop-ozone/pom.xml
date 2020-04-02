@@ -34,6 +34,7 @@
     <module>tools</module>
     <module>integration-test</module>
     <module>ozonefs</module>
+    <module>ozonefs-hadoop27</module>
     <module>datanode</module>
     <module>s3gateway</module>
     <module>dist</module>
