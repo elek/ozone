@@ -18,28 +18,51 @@
 
 package org.apache.hadoop.ozone.client.rpc;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Preconditions;
+import javax.crypto.Cipher;
+import javax.crypto.CipherInputStream;
+import javax.crypto.CipherOutputStream;
+import java.io.IOException;
+import java.net.URI;
+import java.security.InvalidKeyException;
+import java.security.SecureRandom;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.conf.StorageUnit;
 import org.apache.hadoop.crypto.CryptoInputStream;
 import org.apache.hadoop.crypto.CryptoOutputStream;
 import org.apache.hadoop.crypto.key.KeyProvider;
 import org.apache.hadoop.fs.FileEncryptionInfo;
-import org.apache.hadoop.hdds.conf.OzoneConfiguration;
-import org.apache.hadoop.hdds.protocol.StorageType;
-import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos
-    .ChecksumType;
-import org.apache.hadoop.hdds.scm.client.HddsClientUtils;
-import org.apache.hadoop.hdds.tracing.TracingUtil;
-import org.apache.hadoop.io.IOUtils;
-import org.apache.hadoop.ozone.OzoneConfigKeys;
-import org.apache.hadoop.ozone.OzoneConsts;
-import org.apache.hadoop.ozone.OzoneSecurityUtil;
-import org.apache.hadoop.ozone.client.*;
 import org.apache.hadoop.hdds.client.OzoneQuota;
 import org.apache.hadoop.hdds.client.ReplicationFactor;
 import org.apache.hadoop.hdds.client.ReplicationType;
+import org.apache.hadoop.hdds.conf.OzoneConfiguration;
+import org.apache.hadoop.hdds.protocol.StorageType;
+import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.ChecksumType;
+import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
+import org.apache.hadoop.hdds.scm.XceiverClientManager;
+import org.apache.hadoop.hdds.scm.client.HddsClientUtils;
+import org.apache.hadoop.hdds.tracing.TracingUtil;
+import org.apache.hadoop.io.IOUtils;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.ozone.OzoneAcl;
+import org.apache.hadoop.ozone.OzoneConfigKeys;
+import org.apache.hadoop.ozone.OzoneConsts;
+import org.apache.hadoop.ozone.OzoneSecurityUtil;
+import org.apache.hadoop.ozone.client.BucketArgs;
+import org.apache.hadoop.ozone.client.OzoneBucket;
+import org.apache.hadoop.ozone.client.OzoneKey;
+import org.apache.hadoop.ozone.client.OzoneKeyDetails;
+import org.apache.hadoop.ozone.client.OzoneKeyLocation;
+import org.apache.hadoop.ozone.client.OzoneMultipartUpload;
+import org.apache.hadoop.ozone.client.OzoneMultipartUploadList;
+import org.apache.hadoop.ozone.client.OzoneMultipartUploadPartListParts;
+import org.apache.hadoop.ozone.client.OzoneVolume;
 import org.apache.hadoop.ozone.client.VolumeArgs;
 import org.apache.hadoop.ozone.client.io.KeyInputStream;
 import org.apache.hadoop.ozone.client.io.KeyOutputStream;
@@ -69,12 +92,7 @@ import org.apache.hadoop.ozone.om.helpers.S3SecretValue;
 import org.apache.hadoop.ozone.om.helpers.ServiceInfo;
 import org.apache.hadoop.ozone.om.helpers.ServiceInfoEx;
 import org.apache.hadoop.ozone.om.protocol.OzoneManagerProtocol;
-import org.apache.hadoop.ozone.om.protocolPB
-    .OzoneManagerProtocolClientSideTranslatorPB;
-import org.apache.hadoop.ozone.OzoneAcl;
-import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
-import org.apache.hadoop.hdds.scm.ScmConfigKeys;
-import org.apache.hadoop.hdds.scm.XceiverClientManager;
+import org.apache.hadoop.ozone.om.protocolPB.OzoneManagerProtocolClientSideTranslatorPB;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.OMRoleInfo;
 import org.apache.hadoop.ozone.security.GDPRSymmetricKey;
 import org.apache.hadoop.ozone.security.OzoneTokenIdentifier;
@@ -85,24 +103,14 @@ import org.apache.hadoop.ozone.security.acl.OzoneObj;
 import org.apache.hadoop.ozone.web.utils.OzoneUtils;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.token.Token;
-import org.apache.hadoop.io.Text;
+
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
+import static org.apache.hadoop.ozone.OzoneAcl.AclScope.ACCESS;
 import org.apache.logging.log4j.util.Strings;
 import org.apache.ratis.protocol.ClientId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.crypto.Cipher;
-import javax.crypto.CipherInputStream;
-import javax.crypto.CipherOutputStream;
-import java.io.IOException;
-import java.net.URI;
-import java.security.InvalidKeyException;
-import java.security.SecureRandom;
-import java.util.*;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-
-import static org.apache.hadoop.ozone.OzoneAcl.AclScope.ACCESS;
 
 /**
  * Ozone RPC Client Implementation, it connects to OM, SCM and DataNode
@@ -165,9 +173,11 @@ public class RpcClient implements ClientProtocol {
         OzoneConfiguration.of(conf).getObject(XceiverClientManager.
             ScmClientConfig.class), caCertPem);
 
-    int configuredChunkSize = (int) conf
-        .getStorageSize(ScmConfigKeys.OZONE_SCM_CHUNK_SIZE_KEY,
-            ScmConfigKeys.OZONE_SCM_CHUNK_SIZE_DEFAULT, StorageUnit.BYTES);
+    int configuredChunkSize = 4 * 1024 * 1024;
+//        int configuredChunkSize = (int) conf
+//            .getStorageSize(ScmConfigKeys.OZONE_SCM_CHUNK_SIZE_KEY,
+//                ScmConfigKeys.OZONE_SCM_CHUNK_SIZE_DEFAULT, StorageUnit
+//                .BYTES);
     if(configuredChunkSize > OzoneConsts.OZONE_SCM_CHUNK_MAX_SIZE) {
       LOG.warn("The chunk size ({}) is not allowed to be more than"
               + " the maximum size ({}),"
@@ -177,25 +187,26 @@ public class RpcClient implements ClientProtocol {
     } else {
       chunkSize = configuredChunkSize;
     }
-    streamBufferSize = (int) conf
-        .getStorageSize(OzoneConfigKeys.OZONE_CLIENT_STREAM_BUFFER_SIZE,
-            OzoneConfigKeys.OZONE_CLIENT_STREAM_BUFFER_SIZE_DEFAULT,
-            StorageUnit.BYTES);
-    streamBufferFlushSize = (long) conf
-        .getStorageSize(OzoneConfigKeys.OZONE_CLIENT_STREAM_BUFFER_FLUSH_SIZE,
-            OzoneConfigKeys.OZONE_CLIENT_STREAM_BUFFER_FLUSH_SIZE_DEFAULT,
-            StorageUnit.BYTES);
-    streamBufferMaxSize = (long) conf
-        .getStorageSize(OzoneConfigKeys.OZONE_CLIENT_STREAM_BUFFER_MAX_SIZE,
-            OzoneConfigKeys.OZONE_CLIENT_STREAM_BUFFER_MAX_SIZE_DEFAULT,
-            StorageUnit.BYTES);
-    blockSize = (long) conf.getStorageSize(OzoneConfigKeys.OZONE_SCM_BLOCK_SIZE,
-        OzoneConfigKeys.OZONE_SCM_BLOCK_SIZE_DEFAULT, StorageUnit.BYTES);
+    streamBufferSize =4 * 1024 * 1024;
+    streamBufferFlushSize = (long) 16 * 1024 * 1024;
+//    conf
+//        .getStorageSize(OzoneConfigKeys.OZONE_CLIENT_STREAM_BUFFER_FLUSH_SIZE,
+//            OzoneConfigKeys.OZONE_CLIENT_STREAM_BUFFER_FLUSH_SIZE_DEFAULT,
+//            StorageUnit.BYTES);
+    streamBufferMaxSize =  32 * 1024 * 1024;
+//
+//        .getStorageSize(OzoneConfigKeys.OZONE_CLIENT_STREAM_BUFFER_MAX_SIZE,
+//            OzoneConfigKeys.OZONE_CLIENT_STREAM_BUFFER_MAX_SIZE_DEFAULT,
+//            StorageUnit.BYTES);
+    blockSize = (long) 256 * 1024 * 1024;
+//    conf.getStorageSize(OzoneConfigKeys.OZONE_SCM_BLOCK_SIZE,
+//        OzoneConfigKeys.OZONE_SCM_BLOCK_SIZE_DEFAULT, StorageUnit.BYTES);
 
-    int configuredChecksumSize = (int) conf.getStorageSize(
-        OzoneConfigKeys.OZONE_CLIENT_BYTES_PER_CHECKSUM,
-        OzoneConfigKeys.OZONE_CLIENT_BYTES_PER_CHECKSUM_DEFAULT,
-        StorageUnit.BYTES);
+    int configuredChecksumSize = 1 * 1024 * 1024;
+//    (int) conf.getStorageSize(
+//        OzoneConfigKeys.OZONE_CLIENT_BYTES_PER_CHECKSUM,
+//        OzoneConfigKeys.OZONE_CLIENT_BYTES_PER_CHECKSUM_DEFAULT,
+//        StorageUnit.BYTES);
     if(configuredChecksumSize <
         OzoneConfigKeys.OZONE_CLIENT_BYTES_PER_CHECKSUM_MIN_SIZE) {
       LOG.warn("The checksum size ({}) is not allowed to be less than the " +
@@ -221,7 +232,7 @@ public class RpcClient implements ClientProtocol {
     retryInterval = OzoneUtils.getTimeDurationInMS(conf,
         OzoneConfigKeys.OZONE_CLIENT_RETRY_INTERVAL,
         OzoneConfigKeys.OZONE_CLIENT_RETRY_INTERVAL_DEFAULT);
-    dtService = getOMProxyProvider().getCurrentProxyDelegationToken();
+//    dtService = getOMProxyProvider().getCurrentProxyDelegationToken();
     topologyAwareReadEnabled = conf.getBoolean(
         OzoneConfigKeys.OZONE_NETWORK_TOPOLOGY_AWARE_READ_KEY,
         OzoneConfigKeys.OZONE_NETWORK_TOPOLOGY_AWARE_READ_DEFAULT);

@@ -31,6 +31,7 @@ import org.apache.hadoop.hdds.tracing.TracingUtil;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.retry.RetryProxy;
 import org.apache.hadoop.ipc.ProtobufHelper;
+import org.apache.hadoop.ipc.ProtobufRpcEngine;
 import org.apache.hadoop.ipc.ProtocolTranslator;
 import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.ipc.RemoteException;
@@ -203,9 +204,11 @@ public final class OzoneManagerProtocolClientSideTranslatorPB
       String clientId, String omServiceId, UserGroupInformation ugi)
       throws IOException {
     InetSocketAddress socket =
-        InetSocketAddress.createUnresolved("localhost", 9862);
-    long version = RPC.getProtocolVersion(OzoneManagerProtocolPB.class);
+        NetUtils.createSocketAddr("127.0.0.1", 9862);
 
+    long version = RPC.getProtocolVersion(OzoneManagerProtocolPB.class);
+    RPC.setProtocolEngine(conf, OzoneManagerProtocolPB.class,
+        ProtobufRpcEngine.class);
     this.rpcProxy = RPC.getProtocolProxy(OzoneManagerProtocolPB.class, version,
         socket, UserGroupInformation.getCurrentUser(),
         conf, NetUtils.getDefaultSocketFactory(conf),
