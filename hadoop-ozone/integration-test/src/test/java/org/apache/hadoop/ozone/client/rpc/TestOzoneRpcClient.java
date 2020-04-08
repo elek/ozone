@@ -18,13 +18,17 @@
 
 package org.apache.hadoop.ozone.client.rpc;
 
+import java.io.IOException;
+import java.util.concurrent.TimeUnit;
+
+import org.apache.hadoop.hdds.conf.DatanodeRatisServerConfig;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
+import org.apache.hadoop.hdds.ratis.RatisHelper;
 import org.apache.hadoop.hdds.scm.ScmConfigKeys;
+import org.apache.hadoop.ozone.OzoneConfigKeys;
+
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-
-import java.io.IOException;
-
 
 /**
  * This class is to test all the public facing APIs of Ozone Client.
@@ -41,6 +45,25 @@ public class TestOzoneRpcClient extends TestOzoneRpcClientAbstract {
   @BeforeClass
   public static void init() throws Exception {
     OzoneConfiguration conf = new OzoneConfiguration();
+    conf.setInt(OzoneConfigKeys.DFS_RATIS_CLIENT_REQUEST_MAX_RETRIES_KEY,
+        15);
+    conf.setTimeDuration(
+        RatisHelper.HDDS_DATANODE_RATIS_SERVER_PREFIX_KEY + "." +
+            DatanodeRatisServerConfig.RATIS_SERVER_REQUEST_TIMEOUT_KEY,
+        5, TimeUnit.SECONDS);
+    conf.setTimeDuration(
+        RatisHelper.HDDS_DATANODE_RATIS_SERVER_PREFIX_KEY + "." +
+            DatanodeRatisServerConfig.
+                RATIS_SERVER_WATCH_REQUEST_TIMEOUT_KEY,
+        10, TimeUnit.SECONDS);
+    conf.setTimeDuration(
+        RatisHelper.HDDS_DATANODE_RATIS_CLIENT_PREFIX_KEY + "." +
+            "rpc.request.timeout",
+        5, TimeUnit.SECONDS);
+    conf.setTimeDuration(
+        RatisHelper.HDDS_DATANODE_RATIS_CLIENT_PREFIX_KEY + "." +
+            "watch.request.timeout",
+        10, TimeUnit.SECONDS);
     conf.setInt(ScmConfigKeys.OZONE_SCM_PIPELINE_OWNER_CONTAINER_COUNT, 1);
     startCluster(conf);
   }
