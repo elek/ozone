@@ -20,6 +20,8 @@ jobs:
     name: acceptance
     runs-on: ubuntu-18.04
     steps:
+        - name: Setup tmate session
+          uses: mxschmitt/action-tmate@v2
         - uses: actions/checkout@master
         - uses: ./.github/buildenv
           with:
@@ -33,3 +35,4 @@ jobs:
           with:
             name: acceptance
             path: target/acceptance
+        - run: sleep 1000000
