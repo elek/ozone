@@ -23,7 +23,9 @@ jobs:
       image: apache/ozone-build
       volumes: ["/mnt:/github/workflow/mnt"]
     steps:
-      - run: ls -lah mnt
+      - name: Setup tmate session  
+        uses: mxschmitt/action-tmate@v2
+      - run: ls -lah /github/workflow
       - uses: actions/checkout@master
         with:
            path: mnt/ozone
@@ -34,4 +36,6 @@ jobs:
         with:
           name: it-freon
           path: mnt/ozone/target/integration
- 
+      - run: tail
+        if: always()
+        
