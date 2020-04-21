@@ -25,7 +25,7 @@ jobs:
       - uses: actions/checkout@master
         with:
            path: mnt/ozone
-      - uses: ./.github/buildenv
+      - uses: ./mnt/ozone/.github/buildenv
         with:
            args: ./mnt/ozone/hadoop-ozone/dev-support/checks/integration.sh -Pfreon
       - uses: actions/upload-artifact@master
