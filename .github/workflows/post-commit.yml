@@ -19,16 +19,15 @@ jobs:
   it-freon:
     name: it-freon
     runs-on: ubuntu-18.04
-    container:
-      image: apache/ozone-build
-      volumes: ["/mnt:/github/workflow/mnt"]
     steps:
-      - run: ls -lah /github/workflow
+      - run: sudo mount --bind /mnt `pwd`:/mnt
+      - run: ls -lah `pwd`
       - uses: actions/checkout@master
         with:
            path: mnt/ozone
-      - run: ./hadoop-ozone/dev-support/checks/integration.sh -Pfreon
-        working-directory: /github/workflow/mnt/ozone
+      - uses: ./.github/buildenv
+        with:
+           args: ./mnt/ozone/hadoop-ozone/dev-support/checks/integration.sh -Pfreon
       - uses: actions/upload-artifact@master
         if: always()
         with:
