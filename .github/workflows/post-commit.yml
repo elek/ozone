@@ -24,7 +24,7 @@ jobs:
       volumes: ["/mnt:/github/workflow/mnt"]
     steps:
       - run: ls -lah mnt
-      - run: actions/checkout@master
+      - uses: actions/checkout@master
         with:
            path: mnt/ozone
       - run: ./hadoop-ozone/dev-support/checks/integration.sh -Pfreon
