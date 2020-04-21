@@ -21,10 +21,10 @@ jobs:
     runs-on: ubuntu-18.04
     container:
       image: apache/ozone-build
-      volumes: ["/mnt:/mnt"]
+      volumes: ["/mnt:/mnt", "/:/root"]
     steps:
       - run: ls -lah .
-      - run: mount --bind /mnt /github/workflow
+      - run: sudo mount --bind /root/mnt /root/github/workflow
       - run: actions/checkout@master
       - run: ./hadoop-ozone/dev-support/checks/integration.sh -Pfreon
       - uses: actions/upload-artifact@master
