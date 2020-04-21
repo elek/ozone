@@ -20,7 +20,7 @@ jobs:
     name: it-freon
     runs-on: ubuntu-18.04
     steps:
-      - run: sudo mount --bind /mnt `pwd`:/mnt
+      - run: sudo mount --bind /mnt `pwd`/mnt
       - run: ls -lah `pwd`
       - uses: actions/checkout@master
         with:
