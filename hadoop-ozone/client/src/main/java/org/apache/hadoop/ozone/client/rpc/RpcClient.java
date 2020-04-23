@@ -73,7 +73,6 @@ import org.apache.hadoop.ozone.client.io.LengthInputStream;
 import org.apache.hadoop.ozone.client.io.OzoneInputStream;
 import org.apache.hadoop.ozone.client.io.OzoneOutputStream;
 import org.apache.hadoop.ozone.client.protocol.ClientProtocol;
-import org.apache.hadoop.ozone.om.ha.OMFailoverProxyProvider;
 import org.apache.hadoop.ozone.om.helpers.BucketEncryptionKeyInfo;
 import org.apache.hadoop.ozone.om.helpers.OmBucketArgs;
 import org.apache.hadoop.ozone.om.helpers.OmBucketInfo;
@@ -94,6 +93,8 @@ import org.apache.hadoop.ozone.om.helpers.S3SecretValue;
 import org.apache.hadoop.ozone.om.helpers.ServiceInfo;
 import org.apache.hadoop.ozone.om.helpers.ServiceInfoEx;
 import org.apache.hadoop.ozone.om.protocol.OzoneManagerProtocol;
+import org.apache.hadoop.ozone.om.protocolPB.OmTransport;
+import org.apache.hadoop.ozone.om.protocolPB.OmTransportFactory;
 import org.apache.hadoop.ozone.om.protocolPB.OzoneManagerProtocolClientSideTranslatorPB;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.OMRoleInfo;
 import org.apache.hadoop.ozone.security.GDPRSymmetricKey;
@@ -106,7 +107,6 @@ import org.apache.hadoop.ozone.web.utils.OzoneUtils;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.token.Token;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import static org.apache.hadoop.ozone.OzoneAcl.AclScope.ACCESS;
 import org.apache.logging.log4j.util.Strings;
@@ -161,9 +161,11 @@ public class RpcClient implements ClientProtocol {
     this.userRights = aclConfig.getUserDefaultRights();
     this.groupRights = aclConfig.getGroupDefaultRights();
 
+    OmTransport omTransport = OmTransportFactory.create(conf, ugi, omServiceId);
+
     this.ozoneManagerClient = TracingUtil.createProxy(
-        new OzoneManagerProtocolClientSideTranslatorPB(
-            this.conf, clientId.toString(), omServiceId, ugi),
+        new OzoneManagerProtocolClientSideTranslatorPB(omTransport,
+            clientId.toString()),
         OzoneManagerProtocol.class, conf
     );
 
@@ -236,7 +238,6 @@ public class RpcClient implements ClientProtocol {
     retryInterval = OzoneUtils.getTimeDurationInMS(conf,
         OzoneConfigKeys.OZONE_CLIENT_RETRY_INTERVAL,
         OzoneConfigKeys.OZONE_CLIENT_RETRY_INTERVAL_DEFAULT);
-    dtService = getOMProxyProvider().getCurrentProxyDelegationToken();
     topologyAwareReadEnabled = conf.getBoolean(
         OzoneConfigKeys.OZONE_NETWORK_TOPOLOGY_AWARE_READ_KEY,
         OzoneConfigKeys.OZONE_NETWORK_TOPOLOGY_AWARE_READ_DEFAULT);
@@ -524,12 +525,6 @@ public class RpcClient implements ClientProtocol {
         "kerberosID cannot be null or empty.");
 
     return ozoneManagerClient.getS3Secret(kerberosID);
-  }
-
-  @Override
-  @VisibleForTesting
-  public OMFailoverProxyProvider getOMProxyProvider() {
-    return ozoneManagerClient.getOMFailoverProxyProvider();
   }
 
   @Override
