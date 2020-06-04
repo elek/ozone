@@ -21,6 +21,4 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
       - uses: actions/checkout@master
-      - uses: ./.github/buildenv
-        with:
-          args: ./hadoop-ozone/dev-support/checks/build.sh
+      - run: ./hadoop-ozone/dev-support/checks/build.sh
