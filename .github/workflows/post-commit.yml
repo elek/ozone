@@ -20,5 +20,9 @@ jobs:
     name: compile
     runs-on: ubuntu-18.04
     steps:
+      - uses: actions/cache@v2
+        with:
+           path: ~/.m2/repository
+           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
       - uses: actions/checkout@master
       - run: ./hadoop-ozone/dev-support/checks/build.sh
