@@ -177,9 +177,7 @@ jobs:
       fail-fast: false
     steps:
         - run: sudo mkdir mnt && sudo mount --bind /mnt `pwd`/mnt && sudo chmod 777 mnt
-        - run: curl https://raw.githubusercontent.com/elek/hadoop-ozone/smart-checkout/.github/checkout.sh | bash
-          with:
-            path: mnt/ozone
+        - run: curl https://raw.githubusercontent.com/elek/hadoop-ozone/smart-checkout/.github/checkout.sh /mnt/ozone | bash
         - uses: ./mnt/ozone/.github/buildenv
           with:
              args: ./mnt/ozone/hadoop-ozone/dev-support/checks/integration.sh -P${{ matrix.profile }}
