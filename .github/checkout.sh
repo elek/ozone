@@ -15,11 +15,18 @@
 # limitations under the License.
 
 # This is a simple checkout script specific to the
+set -ex
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 cat "$GITHUB_EVENT_PATH"
 
-BODY=$(jq -r .comment.body "$GITHUB_EVENT_PATH")
+#BODY=$(jq -r .comment.body "$GITHUB_EVENT_PATH")
+
 env
+
+echo $GITHUB_REPOSITORY
+echo $GITHUB_WORKSPACE
+echo $GITHUB_SHA
 
 rm -rf "$GITHUB_WORKSPACE"
 
