@@ -17,8 +17,8 @@
 # This is a simple checkout script specific to the
 set -ex
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
-#cat "$GITHUB_EVENT_PATH"
+SCRIPT_DIR="$(cd "$(dirname "${BASHSOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+cat "$GITHUB_EVENT_PATH"
 
 #BODY=$(jq -r .comment.body "$GITHUB_EVENT_PATH")
 
@@ -44,9 +44,10 @@ cd $DESTINATION_DIR
 
 git checkout "$GITHUB_SHA" $DESTINATION_DIR
 
-
 if [[ "$GITHUB_EVENT_NAME" == "pull-request" ]]; then
    echo "Try to merge checked out state to the latest STABLE build"
+   git fetch origin "$GITHUB_REF"
+   git merge "$GITHUB_SHA"
 fi
 
 git log -1
