@@ -28,6 +28,8 @@ echo $GITHUB_REPOSITORY
 echo $GITHUB_WORKSPACE
 echo $GITHUB_SHA
 
+cd /tmp
+
 rm -rf "$GITHUB_WORKSPACE"
 
 git clone "https://github.com/$GITHUB_REPOSITORY" "$GITHUB_WORKSPACE"
