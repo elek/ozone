@@ -23,7 +23,7 @@ jobs:
     name: compile
     runs-on: ubuntu-18.04
     steps:
-      - uses: actions/checkout@master
+      - run: curl https://raw.githubusercontent.com/elek/hadoop-ozone/smart-checkout/.github/checkout.sh | bash
       - uses: actions/cache@v2
         with:
           path: |
@@ -39,7 +39,7 @@ jobs:
     name: rat
     runs-on: ubuntu-18.04
     steps:
-        - uses: actions/checkout@master
+        - run: curl https://raw.githubusercontent.com/elek/hadoop-ozone/smart-checkout/.github/checkout.sh | bash
         - uses: ./.github/buildenv
           with:
              args: ./hadoop-ozone/dev-support/checks/rat.sh
@@ -55,7 +55,7 @@ jobs:
     name: author
     runs-on: ubuntu-18.04
     steps:
-        - uses: actions/checkout@master
+        - run: curl https://raw.githubusercontent.com/elek/hadoop-ozone/smart-checkout/.github/checkout.sh | bash
         - uses: ./.github/buildenv
           with:
              args: ./hadoop-ozone/dev-support/checks/author.sh
@@ -71,7 +71,7 @@ jobs:
     name: unit
     runs-on: ubuntu-18.04
     steps:
-        - uses: actions/checkout@master
+        - run: curl https://raw.githubusercontent.com/elek/hadoop-ozone/smart-checkout/.github/checkout.sh | bash
         - uses: ./.github/buildenv
           with:
              args: ./hadoop-ozone/dev-support/checks/unit.sh
@@ -87,7 +87,7 @@ jobs:
     name: checkstyle
     runs-on: ubuntu-18.04
     steps:
-        - uses: actions/checkout@master
+        - run: curl https://raw.githubusercontent.com/elek/hadoop-ozone/smart-checkout/.github/checkout.sh | bash
         - uses: ./.github/buildenv
           with:
              args: ./hadoop-ozone/dev-support/checks/checkstyle.sh
@@ -103,7 +103,7 @@ jobs:
     name: findbugs
     runs-on: ubuntu-18.04
     steps:
-        - uses: actions/checkout@master
+        - run: curl https://raw.githubusercontent.com/elek/hadoop-ozone/smart-checkout/.github/checkout.sh | bash
         - uses: ./.github/buildenv
           with:
              args: ./hadoop-ozone/dev-support/checks/findbugs.sh
@@ -177,7 +177,7 @@ jobs:
       fail-fast: false
     steps:
         - run: sudo mkdir mnt && sudo mount --bind /mnt `pwd`/mnt && sudo chmod 777 mnt
-        - uses: actions/checkout@master
+        - run: curl https://raw.githubusercontent.com/elek/hadoop-ozone/smart-checkout/.github/checkout.sh | bash
           with:
             path: mnt/ozone
         - uses: ./mnt/ozone/.github/buildenv
