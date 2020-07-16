@@ -27,15 +27,18 @@ env
 echo $GITHUB_REPOSITORY
 echo $GITHUB_WORKSPACE
 echo $GITHUB_SHA
+echo "$GITHUB_EVENT_NAME"
 
 cd /tmp
 
 rm -rf "$GITHUB_WORKSPACE"
 
-git clone "https://github.com/$GITHUB_REPOSITORY" "$GITHUB_WORKSPACE"
-
 git checkout "$GITHUB_SHA"
 
-cd "$GITHUB_WORKSPACE"
+git clone "https://github.com/$GITHUB_REPOSITORY" "$GITHUB_WORKSPACE"
+
+if [[ "$GITHUB_EVENT_NAME" == "pull-request" ]]; then
+   echo "Try to merge checked out state to the latest STABLE build"
+fi
 
 git log -1
