@@ -134,7 +134,7 @@ jobs:
       - name: checkout to /mnt/ozone
         run: |
           sudo chmod 777 /mnt
-          git clone https://github.com/${GITHUB_REPOSITORY}.git /mnt/ozone
+          curl https://raw.githubusercontent.com/elek/hadoop-ozone/smart-checkout/.github/checkout.sh /mnt/ozone | bash
           cd /mnt/ozone
           git fetch origin "${GITHUB_REF}"
           git checkout FETCH_HEAD

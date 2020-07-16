@@ -18,7 +18,7 @@
 set -ex
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
-cat "$GITHUB_EVENT_PATH"
+#cat "$GITHUB_EVENT_PATH"
 
 #BODY=$(jq -r .comment.body "$GITHUB_EVENT_PATH")
 
@@ -27,15 +27,23 @@ env
 echo $GITHUB_REPOSITORY
 echo $GITHUB_WORKSPACE
 echo $GITHUB_SHA
-echo "$GITHUB_EVENT_NAME"
+echo $GITHUB_EVENT_NAME
 
 cd /tmp
 
 rm -rf "$GITHUB_WORKSPACE"
 
-git checkout "$GITHUB_SHA"
+DESTINATION_DIR="$GITHUB_WORKSPACE"
+if [ "$#" == "1" ]; then
+   DESTINATION_DIR="$1"
+fi
 
 git clone "https://github.com/$GITHUB_REPOSITORY" "$GITHUB_WORKSPACE"
+
+cd $DESTINATION_DIR
+
+git checkout "$GITHUB_SHA" $DESTINATION_DIR
+
 
 if [[ "$GITHUB_EVENT_NAME" == "pull-request" ]]; then
    echo "Try to merge checked out state to the latest STABLE build"
