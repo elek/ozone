@@ -33,7 +33,7 @@ spec:
     spec:
       containers:
       - name: web
-        image: python:3.7.3-alpine3.8
+        image: apache/ozone-runner:20200420-1
         args:
         - python
         - -m
@@ -43,8 +43,33 @@ spec:
         volumeMounts:
         - mountPath: /www
           name: webroot
+        - name: mount
+          mountPath: /opt/hadoop
+        - name: mount
+          mountPath: /opt/hadoop
+        - name: mount
+          mountPath: /opt/hadoop
+        - name: mount
+          mountPath: /opt/hadoop
+        - name: mount
+          mountPath: /opt/hadoop
       volumes:
       - name: webroot
         persistentVolumeClaim:
           claimName: ozone-csi-test-webserver
           readOnly: false
+      - name: mount
+        hostPath:
+          path: /home/elek/projects/ozone/hadoop-ozone/dist/target/ozone-0.6.0-SNAPSHOT
+      - name: mount
+        hostPath:
+          path: /home/elek/projects/ozone/hadoop-ozone/dist/target/ozone-0.6.0-SNAPSHOT
+      - name: mount
+        hostPath:
+          path: /home/elek/projects/ozone/hadoop-ozone/dist/target/ozone-0.6.0-SNAPSHOT
+      - name: mount
+        hostPath:
+          path: /home/elek/projects/ozone/hadoop-ozone/dist/target/ozone-0.6.0-SNAPSHOT
+      - name: mount
+        hostPath:
+          path: /home/elek/projects/ozone/hadoop-ozone/dist/target/ozone-0.6.0-SNAPSHOT
