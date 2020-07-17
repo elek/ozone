@@ -33,20 +33,22 @@ cd /tmp
 
 rm -rf "$GITHUB_WORKSPACE"
 
+#Checkout master
 DESTINATION_DIR="$GITHUB_WORKSPACE"
 if [ "$#" == "1" ]; then
    DESTINATION_DIR="$1"
 fi
+git clone "https://github.com/$GITHUB_REPOSITORY" "$DESTINATION_DIR"
+cd "$DESTINATION_DIR"
 
-git clone "https://github.com/$GITHUB_REPOSITORY" "$GITHUB_WORKSPACE"
+#Checkout required reference
+git checkout "$GITHUB_SHA"
 
-cd $DESTINATION_DIR
-
-git checkout "$GITHUB_SHA" $DESTINATION_DIR
-
+#In case of PR, checkout the original branch and merge it to the latest stable master
 if [[ "$GITHUB_EVENT_NAME" == "pull-request" ]]; then
    echo "Try to merge checked out state to the latest STABLE build"
    git fetch origin "$GITHUB_REF"
+   git checkout FETCH_HEAD
    git merge "$GITHUB_SHA"
 fi
 
