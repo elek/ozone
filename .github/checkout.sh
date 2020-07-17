@@ -15,19 +15,12 @@
 # limitations under the License.
 
 # This is a simple checkout script specific to the
-set -ex
+set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASHSOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 cat "$GITHUB_EVENT_PATH"
 
 #BODY=$(jq -r .comment.body "$GITHUB_EVENT_PATH")
-
-env
-
-echo $GITHUB_REPOSITORY
-echo $GITHUB_WORKSPACE
-echo $GITHUB_SHA
-echo $GITHUB_EVENT_NAME
 
 cd /tmp
 
@@ -41,15 +34,17 @@ fi
 git clone "https://github.com/$GITHUB_REPOSITORY" "$DESTINATION_DIR"
 cd "$DESTINATION_DIR"
 
-#Checkout required reference
-git checkout "$GITHUB_SHA"
-
 #In case of PR, checkout the original branch and merge it to the latest stable master
-if [[ "$GITHUB_EVENT_NAME" == "pull-request" ]]; then
+if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
    echo "Try to merge checked out state to the latest STABLE build"
-   git fetch origin "$GITHUB_REF"
-   git checkout FETCH_HEAD
-   git merge "$GITHUB_SHA"
+   PR_HEAD=$(jq -r .pull_request.head.sha "$GITHUB_EVENT_PATH")
+   git fetch origin "$GITHUB_REF" 
+   git checkout "$PR_HEAD"
+   git fetch $(jq -r .pull_request.base.repo.clone_url "$GITHUB_EVENT_PATH") $(jq -r .pull_request.base.ref "$GITHUB_EVENT_PATH")
+   git merge FETCH_HEAD
+else
+   #Checkout required reference
+   git checkout "$GITHUB_SHA"
 fi
 
 git log -1

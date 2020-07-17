@@ -1,0 +1,16 @@
+ {
+  "pull_request": {
+    "head" : {
+        "sha": "d0d64deee"
+     },
+     "base": {
+       "label": "elek:apache-master",
+       "ref": "apache-master",
+       "repo": {
+         "clone_url": "https://github.com/elek/hadoop-ozone.git",
+         "url": "https://api.github.com/repos/elek/hadoop-ozone"
+       },
+       "sha": "7266bf87da846241494cf3e219f1785f53f1c729"
+     }
+ }
+}
