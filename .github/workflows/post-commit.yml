@@ -69,8 +69,8 @@ jobs:
       - uses: actions/upload-artifact@master
         if: always()
         with:
-          name: acceptance
-          path: /mnt/ozone/target/acceptance
+          name: kubernetes
+          path: /mnt/ozone/target/kubernetes
       - run: |
           #Never cache local artifacts
           rm -rf ~/.m2/repository/org/apache/hadoop/hdds
