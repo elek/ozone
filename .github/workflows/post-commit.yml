@@ -58,6 +58,15 @@ jobs:
           wget https://github.com/elek/flekszible/releases/download/v1.8.1/flekszible_1.8.1_Linux_x86_64.tar.gz -O - | tar -zx
           chmod +x flekszible
           sudo mv flekszible /usr/bin/flekszible
+      - name: Setup tmate session
+        run: |
+            sudo apt-get update
+            sudo apt-get install -y tmate openssh-client
+            echo -e 'y\n'|ssh-keygen -q -t rsa -N "" -f ~/.ssh/id_rsa
+            tmate -S /tmp/tmate.sock new-session -d
+            tmate -S /tmp/tmate.sock wait tmate-ready
+            tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}'
+            tmate -S /tmp/tmate.sock display -p '#{tmate_web}'
       - name: run a full build
         run: |
           cd /mnt/ozone
