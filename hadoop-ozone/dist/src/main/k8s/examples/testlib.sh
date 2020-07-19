@@ -15,8 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -e
-
 retry() {
    n=0
    until [ $n -ge 30 ]
@@ -35,9 +33,11 @@ grep_log() {
 }
 
 wait_for_startup(){
+   print_phase "Waiting until the k8s cluster is running"
    retry all_pods_are_running
    retry grep_log scm-0 "SCM exiting safe mode."
    retry grep_log om-0 "HTTP server of ozoneManager listening"
+   print_phase "Cluster is up and running"
 }
 
 all_pods_are_running() {
@@ -58,6 +58,7 @@ all_pods_are_running() {
 }
 
 start_k8s_env() {
+   print_phase "Deleting existing k8s resources"
    #reset environment
    kubectl delete statefulset --all
    kubectl delete daemonset --all
@@ -66,38 +67,34 @@ start_k8s_env() {
    kubectl delete configmap --all
    kubectl delete pod --all
 
-   kubectl apply -f "$1"
+   print_phase "Applying k8s resources from $1"
+   kubectl apply -f .
    wait_for_startup
 }
 
 stop_k8s_env() {
    if [ ! "$KEEP_RUNNING" ]; then
-     kubectl delete -f "$1"
+     kubectl delete -f .
    fi
 }
 
 regenerate_resources() {
-  cd $1
-
-  PARENT_OF_PARENT=$(realpath "$1"/../..)
+  PARENT_OF_PARENT=$(realpath ../..)
 
   if [ $(basename $PARENT_OF_PARENT) == "k8s" ]; then
     #running from src dir
-    OZONE_ROOT=$(realpath "$1"/../../../../../target/ozone-0.6.0-SNAPSHOT)
+    OZONE_ROOT=$(realpath ../../../../../target/ozone-0.6.0-SNAPSHOT)
   else
     #running from dist
-    OZONE_ROOT=$(realpath "$1"/../../..)
+    OZONE_ROOT=$(realpath ../../..)
   fi
 
   flekszible generate -t mount:hostPath="$OZONE_ROOT",path=/opt/hadoop -t image:image=apache/ozone-runner:20200420-1 -t ozone/onenode
-  cd -
-
 }
 
 execute_robot_test() {
-   OUTPUT_DIR="$1"
-   mkdir -p "$OUTPUT_DIR/result"
-   shift 1 #Remove first argument which was the container name
+   print_phase "Executing robot tests $@"
+   mkdir -p result
 
    CONTAINER="$1"
    shift 1 #Remove first argument which was the container name
@@ -107,11 +104,17 @@ execute_robot_test() {
 
    kubectl exec -it "${CONTAINER}" -- bash -c 'rm -rf /tmp/report'
    kubectl exec -it "${CONTAINER}" -- bash -c 'mkdir -p  /tmp/report'
-   kubectl exec -it "${CONTAINER}" -- robot -d /tmp/report ${ARGUMENTS[@]} || true
-   kubectl cp "${CONTAINER}":/tmp/report/output.xml "$OUTPUT_DIR/result/$CONTAINER-$RANDOM.xml" || true
+   kubectl exec -it "${CONTAINER}" -- robot --nostatusrc -d /tmp/report ${ARGUMENTS[@]} || true
+   kubectl cp "${CONTAINER}":/tmp/report/output.xml "result/$CONTAINER-$RANDOM.xml" || true
 }
 
 combine_reports() {
-  rm "$1"/result/output.xml || true
-  rebot -d "$1"/result -o "$1"/result/output.xml -N $(basename $1) "$1"/result/*.xml
+  rm result/output.xml || true
+  rebot -d result --nostatusrc -o output.xml -N $(basename "$(pwd)") result/*.xml
+}
+
+print_phase() {
+   echo ""
+   echo "**** $1 ****"
+   echo ""
 }
