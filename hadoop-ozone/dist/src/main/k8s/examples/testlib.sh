@@ -60,6 +60,8 @@ all_pods_are_running() {
 start_k8s_env() {
    print_phase "Deleting existing k8s resources"
    #reset environment
+   kubectl delete pvc --all
+   kubectl delete pv --all
    kubectl delete statefulset --all
    kubectl delete daemonset --all
    kubectl delete deployment --all
