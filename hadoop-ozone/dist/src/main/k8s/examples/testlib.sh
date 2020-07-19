@@ -22,8 +22,11 @@ retry() {
       "$@" && break
       n=$[$n+1]
       echo "$n '$@' is failed..."
-      sleep 3
+      sleep ${RETRY_SLEEP:-3}
    done
+   if [ $n -eq 30 ]; then
+      return 255
+   fi
 }
 
 grep_log() {
