@@ -86,7 +86,7 @@ regenerate_resources() {
     OZONE_ROOT=$(realpath "$1"/../../../../../target/ozone-0.6.0-SNAPSHOT)
   else
     #running from dist
-    OZONE_ROOT=$(realpath "$1"/../..)
+    OZONE_ROOT=$(realpath "$1"/../../..)
   fi
 
   flekszible generate -t mount:hostPath="$OZONE_ROOT",path=/opt/hadoop -t image:image=apache/ozone-runner:20200420-1 -t ozone/onenode
