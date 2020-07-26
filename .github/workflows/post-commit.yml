@@ -67,6 +67,25 @@ jobs:
           with:
             name: author
             path: target/author
+  bats:
+    name: bats
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Git checkout
+        uses: actions/checkout@master
+      - name: Execute bats tests
+        uses: ./.github/buildenv
+        with:
+          args: ./hadoop-ozone/dev-support/checks/bats.sh
+      - name: Summary of failures
+        run: cat target/${{ github.job }}/summary.txt
+        if: always()
+      - name: Archive results as artiracts
+        uses: actions/upload-artifact@master
+        if: always()
+        with:
+          name: rat
+          path: target/rat
   unit:
     name: unit
     runs-on: ubuntu-18.04
