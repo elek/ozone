@@ -454,7 +454,7 @@ public class ContainerStateManager {
         final ContainerInfo containerInfo = containers.getContainerInfo(id);
         if (containerInfo.getUsedBytes() + size <= this.containerSize
             && storageClass.getName().equals(
-                containerInfo.getStorageClass())) {
+                containerInfo.getStorageClass().getName())) {
           containerInfo.updateLastUsedTime();
           return containerInfo;
         }
