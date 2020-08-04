@@ -20,6 +20,7 @@ package org.apache.hadoop.ozone.recon.scm;
 
 import java.io.IOException;
 
+import org.apache.hadoop.hdds.StaticStorageClassRegistry;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.scm.container.ContainerID;
 import org.apache.hadoop.hdds.scm.container.ContainerInfo;
@@ -37,8 +38,6 @@ import org.apache.hadoop.ozone.recon.persistence.ContainerSchemaManager;
 import org.apache.hadoop.ozone.recon.spi.StorageContainerServiceProvider;
 
 import static org.apache.hadoop.hdds.protocol.proto.HddsProtos.LifeCycleState.OPEN;
-import static org.apache.hadoop.hdds.protocol.proto.HddsProtos.ReplicationFactor.ONE;
-import static org.apache.hadoop.hdds.protocol.proto.HddsProtos.ReplicationType.STAND_ALONE;
 import static org.apache.hadoop.hdds.scm.ScmConfigKeys.OZONE_SCM_NAMES;
 import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_METADATA_DIRS;
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.getRandomPipeline;
@@ -116,10 +115,9 @@ public class AbstractReconContainerManagerTest {
             .setContainerID(containerID.getId())
             .setNumberOfKeys(10)
             .setPipelineID(pipeline.getId())
-            .setReplicationFactor(ONE)
             .setOwner("test")
             .setState(OPEN)
-            .setReplicationType(STAND_ALONE)
+            .setStorageClass(StaticStorageClassRegistry.LEGACY.getName())
             .build();
     ContainerWithPipeline containerWithPipeline =
         new ContainerWithPipeline(containerInfo, pipeline);
