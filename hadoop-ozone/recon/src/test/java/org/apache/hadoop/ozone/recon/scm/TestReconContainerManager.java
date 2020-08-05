@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.NavigableSet;
 
+import org.apache.hadoop.hdds.StaticStorageClassRegistry;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
 import org.apache.hadoop.hdds.scm.container.ContainerID;
 import org.apache.hadoop.hdds.scm.container.ContainerInfo;
@@ -55,10 +56,10 @@ public class TestReconContainerManager
             .setContainerID(containerID.getId())
             .setNumberOfKeys(10)
             .setPipelineID(pipeline.getId())
-            .setReplicationFactor(ONE)
             .setOwner("test")
             .setState(OPEN)
-            .setReplicationType(STAND_ALONE)
+            .setStorageClass(
+                StaticStorageClassRegistry.REDUCED_REDUNDANCY.getName())
             .build();
     ContainerWithPipeline containerWithPipeline =
         new ContainerWithPipeline(containerInfo, pipeline);

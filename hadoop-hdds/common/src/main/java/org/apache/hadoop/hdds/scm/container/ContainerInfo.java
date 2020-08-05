@@ -496,6 +496,10 @@ public class ContainerInfo implements Comparator<ContainerInfo>,
     }
 
     public ContainerInfo build() {
+      if (StringUtils.isBlank(storageClass)) {
+        storageClass = StorageClassConverter.convert(null,
+            replicationFactor, replicationType).getName();
+      }
       return new ContainerInfo(containerID, state, pipelineID,
           used, keys, stateEnterTime, owner, deleteTransactionId,
           sequenceId, replicationFactor, replicationType, storageClass);
