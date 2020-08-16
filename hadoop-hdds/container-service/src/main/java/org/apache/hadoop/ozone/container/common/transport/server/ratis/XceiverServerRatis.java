@@ -317,12 +317,14 @@ public final class XceiverServerRatis implements XceiverServerSpi {
             .getDuration(), leaderElectionMinTimeoutUnit);
     final TimeDuration leaderElectionMinTimeout =
         TimeDuration.valueOf(duration, leaderElectionMinTimeoutUnit);
+
     RaftServerConfigKeys.Rpc
         .setTimeoutMin(properties, leaderElectionMinTimeout);
-    long leaderElectionMaxTimeout =
-        leaderElectionMinTimeout.toLong(TimeUnit.MILLISECONDS) + 200;
+
     RaftServerConfigKeys.Rpc.setTimeoutMax(properties,
-        TimeDuration.valueOf(leaderElectionMaxTimeout, TimeUnit.MILLISECONDS));
+        TimeDuration.valueOf(conf.getTimeDuration(
+            "dfs.ratis.leader.election.maximum.timeout.duration",
+            "6s", TimeUnit.MILLISECONDS), TimeUnit.MILLISECONDS));
   }
 
   private void setTimeoutForRetryCache(RaftProperties properties) {
