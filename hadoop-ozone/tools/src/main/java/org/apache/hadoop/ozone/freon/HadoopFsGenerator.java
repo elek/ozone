@@ -16,14 +16,12 @@
  */
 package org.apache.hadoop.ozone.freon;
 
-import java.net.URI;
 import java.util.concurrent.Callable;
 
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdds.cli.HddsVersionProvider;
-import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 
 import com.codahale.metrics.Timer;
 import org.slf4j.Logger;
@@ -54,7 +52,7 @@ public class HadoopFsGenerator extends BaseFreonGenerator
   @Option(names = {"-s", "--size"},
       description = "Size of the generated files (in bytes)",
       defaultValue = "10240")
-  private int fileSize;
+  private long fileSize;
 
   @Option(names = {"--buffer"},
       description = "Size of buffer used to generated the key content.",
@@ -71,10 +69,6 @@ public class HadoopFsGenerator extends BaseFreonGenerator
   public Void call() throws Exception {
 
     init();
-
-    OzoneConfiguration configuration = createOzoneConfiguration();
-
-    fileSystem = FileSystem.get(URI.create(rootPath), configuration);
 
     contentGenerator = new ContentGenerator(fileSize, bufferSize);
 
