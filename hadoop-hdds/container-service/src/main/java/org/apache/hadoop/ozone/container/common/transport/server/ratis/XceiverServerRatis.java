@@ -306,17 +306,14 @@ public final class XceiverServerRatis implements XceiverServerSpi {
 
   private void setRatisLeaderElectionTimeout(RaftProperties properties) {
     long duration;
-    TimeUnit leaderElectionMinTimeoutUnit =
-        OzoneConfigKeys.
-            DFS_RATIS_LEADER_ELECTION_MINIMUM_TIMEOUT_DURATION_DEFAULT
-            .getUnit();
+
     duration = conf.getTimeDuration(
         OzoneConfigKeys.DFS_RATIS_LEADER_ELECTION_MINIMUM_TIMEOUT_DURATION_KEY,
         OzoneConfigKeys.
             DFS_RATIS_LEADER_ELECTION_MINIMUM_TIMEOUT_DURATION_DEFAULT
-            .getDuration(), leaderElectionMinTimeoutUnit);
+            .getDuration(), TimeUnit.MILLISECONDS);
     final TimeDuration leaderElectionMinTimeout =
-        TimeDuration.valueOf(duration, leaderElectionMinTimeoutUnit);
+        TimeDuration.valueOf(duration, TimeUnit.MILLISECONDS);
 
     RaftServerConfigKeys.Rpc
         .setTimeoutMin(properties, leaderElectionMinTimeout);
