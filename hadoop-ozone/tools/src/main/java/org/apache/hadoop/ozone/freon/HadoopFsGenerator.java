@@ -54,7 +54,7 @@ public class HadoopFsGenerator extends BaseFreonGenerator
   @Option(names = {"-s", "--size"},
       description = "Size of the generated files (in bytes)",
       defaultValue = "10240")
-  private int fileSize;
+  private long fileSize;
 
   @Option(names = {"--buffer"},
       description = "Size of buffer used to generated the key content.",
