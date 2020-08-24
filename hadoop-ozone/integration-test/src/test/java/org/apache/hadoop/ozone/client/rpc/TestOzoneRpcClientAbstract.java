@@ -2101,7 +2101,7 @@ public abstract class TestOzoneRpcClientAbstract {
         ozoneMultipartUploadPartListParts.getStorageClass())
         .getOpenStateConfiguration()
         .getReplicationType();
-    Assert.assertEquals(STAND_ALONE, actualType);
+    Assert.assertEquals(STAND_ALONE.name(), actualType.name());
     Assert.assertEquals(3,
         ozoneMultipartUploadPartListParts.getPartInfoList().size());
 
@@ -2157,7 +2157,7 @@ public abstract class TestOzoneRpcClientAbstract {
         .getOpenStateConfiguration()
         .getReplicationType();
 
-    Assert.assertEquals(STAND_ALONE, actualType);
+    Assert.assertEquals(STAND_ALONE.name(), actualType.name());
 
     Assert.assertEquals(2,
         ozoneMultipartUploadPartListParts.getPartInfoList().size());
@@ -2263,7 +2263,7 @@ public abstract class TestOzoneRpcClientAbstract {
         ozoneMultipartUploadPartListParts.getStorageClass())
         .getOpenStateConfiguration()
         .getReplicationType();
-    Assert.assertEquals(STAND_ALONE, actualType);
+    Assert.assertEquals(STAND_ALONE.name(), actualType.name());
 
     // As we don't have any parts with greater than partNumberMarker and list
     // is not truncated, so it should return false here.
