@@ -77,7 +77,7 @@ public class DeletedBlockLogImpl
   private final Lock lock;
   // Maps txId to set of DNs which are successful in committing the transaction
   private Map<Long, Set<UUID>> transactionToDNsCommitMap;
-  StaticStorageClassRegistry registry =
+  private final StaticStorageClassRegistry registry =
       new StaticStorageClassRegistry();
 
   public DeletedBlockLogImpl(ConfigurationSource conf,
