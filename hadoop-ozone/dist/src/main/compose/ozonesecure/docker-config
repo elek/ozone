@@ -14,8 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-CORE-SITE.XML_fs.ofs.impl=org.apache.hadoop.fs.ozone.RootedOzoneFileSystem
-CORE-SITE.XML_fs.o3fs.impl=org.apache.hadoop.fs.ozone.OzoneFileSystem
 OZONE-SITE.XML_ozone.om.volume.listall.allowed=false
 
 OZONE-SITE.XML_ozone.om.address=om
@@ -113,4 +111,4 @@ JSVC_HOME=/usr/bin
 SLEEP_SECONDS=5
 KERBEROS_ENABLED=true
 
-no_proxy=om,scm,recon,s3g,kdc,localhost,127.0.0.1
+no_proxy=om,scm,recon,s3g,recon,kdc,localhost,127.0.0.1
