@@ -18,37 +18,33 @@
 
 package org.apache.hadoop.ozone.container.keyvalue;
 
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
-
+import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
-
-import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos;
-import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos
-    .ContainerDataProto;
-import org.apache.hadoop.hdds.utils.db.BatchOperation;
-import org.apache.hadoop.hdds.utils.db.Table;
-import org.apache.hadoop.ozone.container.common.impl.ChunkLayOutVersion;
-import org.apache.hadoop.ozone.container.common.impl.ContainerData;
-import org.apache.hadoop.ozone.container.common.utils.ReferenceCountedDB;
-import org.yaml.snakeyaml.nodes.Tag;
-
-
-import java.io.File;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos;
+import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.ContainerDataProto;
+import org.apache.hadoop.hdds.utils.db.BatchOperation;
+import org.apache.hadoop.hdds.utils.db.Table;
+import org.apache.hadoop.ozone.container.common.impl.ChunkLayOutVersion;
+import org.apache.hadoop.ozone.container.common.impl.ContainerData;
+import org.apache.hadoop.ozone.container.metadata.DatanodeStore;
+
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
 import static java.lang.Math.max;
-import static org.apache.hadoop.ozone.OzoneConsts.CONTAINER_DB_TYPE_ROCKSDB;
-import static org.apache.hadoop.ozone.OzoneConsts.CHUNKS_PATH;
-import static org.apache.hadoop.ozone.OzoneConsts.CONTAINER_DB_TYPE;
-import static org.apache.hadoop.ozone.OzoneConsts.METADATA_PATH;
-import static org.apache.hadoop.ozone.OzoneConsts.SCHEMA_VERSION;
-import static org.apache.hadoop.ozone.OzoneConsts.CONTAINER_BYTES_USED;
 import static org.apache.hadoop.ozone.OzoneConsts.BLOCK_COUNT;
+import static org.apache.hadoop.ozone.OzoneConsts.CHUNKS_PATH;
+import static org.apache.hadoop.ozone.OzoneConsts.CONTAINER_BYTES_USED;
+import static org.apache.hadoop.ozone.OzoneConsts.CONTAINER_DB_TYPE;
+import static org.apache.hadoop.ozone.OzoneConsts.CONTAINER_DB_TYPE_ROCKSDB;
+import static org.apache.hadoop.ozone.OzoneConsts.METADATA_PATH;
 import static org.apache.hadoop.ozone.OzoneConsts.PENDING_DELETE_BLOCK_COUNT;
+import static org.apache.hadoop.ozone.OzoneConsts.SCHEMA_VERSION;
+import org.yaml.snakeyaml.nodes.Tag;
 
 /**
  * This class represents the KeyValueContainer metadata, which is the
@@ -278,15 +274,15 @@ public class KeyValueContainerData extends ContainerData {
 
   /**
    * Update DB counters related to block metadata.
-   * @param db - Reference to container DB.
+   * @param dnStore - Reference to container DB.
    * @param batchOperation - Batch Operation to batch DB operations.
    * @param deletedBlockCount - Number of blocks deleted.
    * @throws IOException
    */
   public void updateAndCommitDBCounters(
-      ReferenceCountedDB db, BatchOperation batchOperation,
+      DatanodeStore dnStore, BatchOperation batchOperation,
       int deletedBlockCount) throws IOException {
-    Table<String, Long> metadataTable = db.getStore().getMetadataTable();
+    Table<String, Long> metadataTable = dnStore.getMetadataTable();
 
     // Set Bytes used and block count key.
     metadataTable.putWithBatch(batchOperation, CONTAINER_BYTES_USED,
@@ -296,6 +292,6 @@ public class KeyValueContainerData extends ContainerData {
     metadataTable.putWithBatch(batchOperation, PENDING_DELETE_BLOCK_COUNT,
             (long)(getNumPendingDeletionBlocks() - deletedBlockCount));
 
-    db.getStore().getBatchHandler().commitBatchOperation(batchOperation);
+    dnStore.getBatchHandler().commitBatchOperation(batchOperation);
   }
 }

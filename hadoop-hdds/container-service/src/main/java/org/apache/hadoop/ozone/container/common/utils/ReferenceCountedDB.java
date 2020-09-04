@@ -18,15 +18,17 @@
 
 package org.apache.hadoop.ozone.container.common.utils;
 
-import com.google.common.base.Preconditions;
-
-import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.apache.hadoop.ozone.container.metadata.DatanodeStore;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.Closeable;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import org.apache.hadoop.ozone.container.common.interfaces.ContainerMetadataLease;
+import org.apache.hadoop.ozone.container.metadata.DatanodeStore;
+import org.apache.hadoop.ozone.container.metadata.ManagedDatanodeStore;
+
+import com.google.common.base.Preconditions;
+import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Class to implement reference counting over instances handed by Container
@@ -35,14 +37,14 @@ import java.util.concurrent.atomic.AtomicInteger;
  * from caller stack. When JDK9 StackWalker is available, we can switch to
  * StackWalker instead of new Exception().printStackTrace().
  */
-public class ReferenceCountedDB implements Closeable {
+public class ReferenceCountedDB implements Closeable, ContainerMetadataLease {
   private static final Logger LOG =
       LoggerFactory.getLogger(ReferenceCountedDB.class);
   private final AtomicInteger referenceCount;
-  private final DatanodeStore store;
+  private final ManagedDatanodeStore store;
   private final String containerDBPath;
 
-  public ReferenceCountedDB(DatanodeStore store, String containerDBPath) {
+  public ReferenceCountedDB(ManagedDatanodeStore store, String containerDBPath) {
     this.referenceCount = new AtomicInteger(0);
     this.store = store;
     this.containerDBPath = containerDBPath;

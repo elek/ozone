@@ -29,14 +29,16 @@ import org.apache.hadoop.ozone.OzoneConsts;
 import org.apache.hadoop.ozone.container.common.helpers.BlockData;
 import org.apache.hadoop.ozone.container.common.helpers.ContainerUtils;
 import org.apache.hadoop.ozone.container.common.interfaces.BlockIterator;
+import org.apache.hadoop.ozone.container.common.interfaces.ContainerMetadataLease;
+import org.apache.hadoop.ozone.container.common.interfaces.ContainerMetadataProvider;
+import org.apache.hadoop.ozone.container.common.utils.ReferenceCountedDB;
 import org.apache.hadoop.ozone.container.keyvalue.KeyValueContainerData;
+import org.apache.hadoop.ozone.container.metadata.DatanodeStoreSchemaOneImpl;
+import org.apache.hadoop.ozone.container.metadata.DatanodeStoreSchemaTwoImpl;
+import org.apache.hadoop.ozone.container.metadata.ManagedDatanodeStore;
 
 import com.google.common.base.Preconditions;
 import org.apache.commons.io.FileUtils;
-import org.apache.hadoop.ozone.container.common.utils.ReferenceCountedDB;
-import org.apache.hadoop.ozone.container.metadata.DatanodeStore;
-import org.apache.hadoop.ozone.container.metadata.DatanodeStoreSchemaOneImpl;
-import org.apache.hadoop.ozone.container.metadata.DatanodeStoreSchemaTwoImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -100,7 +102,7 @@ public final class KeyValueContainerUtil {
           " Path: " + chunksPath);
     }
 
-    DatanodeStore store;
+    ManagedDatanodeStore store;
     if (schemaVersion.equals(OzoneConsts.SCHEMA_V1)) {
       store = new DatanodeStoreSchemaOneImpl(conf,
               containerID, dbFile.getAbsolutePath());
@@ -159,7 +161,9 @@ public final class KeyValueContainerUtil {
    * @param config
    * @throws IOException
    */
-  public static void parseKVContainerData(KeyValueContainerData kvContainerData,
+  public static void parseKVContainerData(
+      KeyValueContainerData kvContainerData,
+      ContainerMetadataProvider containerMetadataProvider,
       ConfigurationSource config) throws IOException {
 
     long containerID = kvContainerData.getContainerID();
@@ -187,8 +191,7 @@ public final class KeyValueContainerUtil {
 
     boolean isBlockMetadataSet = false;
 
-    try(ReferenceCountedDB containerDB = BlockUtils.getDB(kvContainerData,
-        config)) {
+    try(ContainerMetadataLease containerDB = containerMetadataProvider.getMetadata(kvContainerData)) {
 
       Table<String, Long> metadataTable =
               containerDB.getStore().getMetadataTable();
@@ -244,7 +247,7 @@ public final class KeyValueContainerUtil {
     }
 
     if (!isBlockMetadataSet) {
-      initializeUsedBytesAndBlockCount(kvContainerData, config);
+      initializeUsedBytesAndBlockCount(kvContainerData, containerMetadataProvider, config);
     }
   }
 
@@ -255,7 +258,9 @@ public final class KeyValueContainerUtil {
    * @throws IOException
    */
   private static void initializeUsedBytesAndBlockCount(
-      KeyValueContainerData kvData, ConfigurationSource config)
+      KeyValueContainerData kvData,
+      ContainerMetadataProvider containerMetadataProvider,
+      ConfigurationSource config)
           throws IOException {
 
     final String errorMessage = "Failed to parse block data for" +
@@ -264,7 +269,7 @@ public final class KeyValueContainerUtil {
     long blockCount = 0;
     long usedBytes = 0;
 
-    try(ReferenceCountedDB db = BlockUtils.getDB(kvData, config)) {
+    try(ContainerMetadataLease db = containerMetadataProvider.getMetadata(kvData)) {
       // Count all regular blocks.
       try (BlockIterator<BlockData> blockIter =
                    db.getStore().getBlockIterator(

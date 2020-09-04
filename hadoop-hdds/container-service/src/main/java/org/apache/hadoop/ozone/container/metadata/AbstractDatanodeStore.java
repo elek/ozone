@@ -17,34 +17,38 @@
  */
 package org.apache.hadoop.ozone.container.metadata;
 
+import java.io.Closeable;
+import java.io.IOException;
+import java.util.NoSuchElementException;
+
 import org.apache.hadoop.hdds.StringUtils;
 import org.apache.hadoop.hdds.annotation.InterfaceAudience;
 import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.utils.MetadataKeyFilters;
 import org.apache.hadoop.hdds.utils.MetadataKeyFilters.KeyPrefixFilter;
-import org.apache.hadoop.hdds.utils.db.*;
+import org.apache.hadoop.hdds.utils.db.BatchOperationHandler;
+import org.apache.hadoop.hdds.utils.db.DBStore;
+import org.apache.hadoop.hdds.utils.db.DBStoreBuilder;
+import org.apache.hadoop.hdds.utils.db.Table;
+import org.apache.hadoop.hdds.utils.db.TableIterator;
 import org.apache.hadoop.ozone.container.common.helpers.BlockData;
 import org.apache.hadoop.ozone.container.common.helpers.ChunkInfoList;
 import org.apache.hadoop.ozone.container.common.interfaces.BlockIterator;
+
+import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_METADATA_STORE_ROCKSDB_STATISTICS;
+import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_METADATA_STORE_ROCKSDB_STATISTICS_DEFAULT;
+import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_METADATA_STORE_ROCKSDB_STATISTICS_OFF;
 import org.rocksdb.DBOptions;
 import org.rocksdb.Statistics;
 import org.rocksdb.StatsLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.Closeable;
-import java.io.IOException;
-import java.util.NoSuchElementException;
-
-import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_METADATA_STORE_ROCKSDB_STATISTICS;
-import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_METADATA_STORE_ROCKSDB_STATISTICS_DEFAULT;
-import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_METADATA_STORE_ROCKSDB_STATISTICS_OFF;
-
 /**
  * Implementation of the {@link DatanodeStore} interface that contains
  * functionality common to all more derived datanode store implementations.
  */
-public abstract class AbstractDatanodeStore implements DatanodeStore {
+public abstract class AbstractDatanodeStore implements ManagedDatanodeStore {
 
   private Table<String, Long> metadataTable;
 
@@ -74,7 +78,6 @@ public abstract class AbstractDatanodeStore implements DatanodeStore {
     start(config);
   }
 
-  @Override
   public void start(ConfigurationSource config)
           throws IOException {
     if (this.store == null) {
@@ -112,7 +115,6 @@ public abstract class AbstractDatanodeStore implements DatanodeStore {
     }
   }
 
-  @Override
   public void stop() throws Exception {
     if (store != null) {
       store.close();
@@ -120,7 +122,6 @@ public abstract class AbstractDatanodeStore implements DatanodeStore {
     }
   }
 
-  @Override
   public DBStore getStore() {
     return this.store;
   }

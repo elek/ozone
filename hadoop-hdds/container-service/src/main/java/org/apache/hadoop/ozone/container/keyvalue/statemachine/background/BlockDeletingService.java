@@ -37,9 +37,9 @@ import org.apache.hadoop.hdds.utils.BackgroundService;
 import org.apache.hadoop.hdds.utils.BackgroundTask;
 import org.apache.hadoop.hdds.utils.BackgroundTaskQueue;
 import org.apache.hadoop.hdds.utils.BackgroundTaskResult;
-import org.apache.hadoop.hdds.utils.db.BatchOperation;
 import org.apache.hadoop.hdds.utils.MetadataKeyFilters;
 import org.apache.hadoop.hdds.utils.MetadataKeyFilters.KeyPrefixFilter;
+import org.apache.hadoop.hdds.utils.db.BatchOperation;
 import org.apache.hadoop.hdds.utils.db.Table;
 import org.apache.hadoop.ozone.OzoneConsts;
 import org.apache.hadoop.ozone.container.common.helpers.BlockData;
@@ -48,11 +48,11 @@ import org.apache.hadoop.ozone.container.common.impl.ContainerData;
 import org.apache.hadoop.ozone.container.common.impl.TopNOrderedContainerDeletionChoosingPolicy;
 import org.apache.hadoop.ozone.container.common.interfaces.Container;
 import org.apache.hadoop.ozone.container.common.interfaces.ContainerDeletionChoosingPolicy;
+import org.apache.hadoop.ozone.container.common.interfaces.ContainerMetadataLease;
+import org.apache.hadoop.ozone.container.common.interfaces.ContainerMetadataProvider;
 import org.apache.hadoop.ozone.container.common.interfaces.Handler;
 import org.apache.hadoop.ozone.container.common.transport.server.ratis.XceiverServerRatis;
-import org.apache.hadoop.ozone.container.common.utils.ReferenceCountedDB;
 import org.apache.hadoop.ozone.container.keyvalue.KeyValueContainerData;
-import org.apache.hadoop.ozone.container.keyvalue.helpers.BlockUtils;
 import org.apache.hadoop.ozone.container.ozoneimpl.OzoneContainer;
 import org.apache.hadoop.util.Time;
 
@@ -75,6 +75,7 @@ public class BlockDeletingService extends BackgroundService {
   private static final Logger LOG =
       LoggerFactory.getLogger(BlockDeletingService.class);
 
+  private ContainerMetadataProvider containerMetadataProvider;
   private OzoneContainer ozoneContainer;
   private ContainerDeletionChoosingPolicy containerDeletionPolicy;
   private final ConfigurationSource conf;
@@ -254,15 +255,16 @@ public class BlockDeletingService extends BackgroundService {
       container.writeLock();
       long startTime = Time.monotonicNow();
       // Scan container's db and get list of under deletion blocks
-      try (ReferenceCountedDB meta = BlockUtils.getDB(containerData, conf)) {
+      try (ContainerMetadataLease meta = containerMetadataProvider
+          .getMetadata(container.getContainerData())) {
         Table<String, BlockData> blockDataTable =
-                meta.getStore().getBlockDataTable();
+            meta.getStore().getBlockDataTable();
 
         // # of blocks to delete is throttled
         KeyPrefixFilter filter = MetadataKeyFilters.getDeletingKeyFilter();
         List<? extends Table.KeyValue<String, BlockData>> toDeleteBlocks =
             blockDataTable.getSequentialRangeKVs(null, blockLimitPerTask,
-                    filter);
+                filter);
         if (toDeleteBlocks.isEmpty()) {
           LOG.debug("No under deletion block found in container : {}",
               containerData.getContainerID());
@@ -281,7 +283,7 @@ public class BlockDeletingService extends BackgroundService {
         Handler handler = Objects.requireNonNull(ozoneContainer.getDispatcher()
             .getHandler(container.getContainerType()));
 
-        for (Table.KeyValue<String, BlockData> entry: toDeleteBlocks) {
+        for (Table.KeyValue<String, BlockData> entry : toDeleteBlocks) {
           String blockName = entry.getKey();
           LOG.debug("Deleting block {}", blockName);
           try {
@@ -297,23 +299,24 @@ public class BlockDeletingService extends BackgroundService {
         // Once files are deleted... replace deleting entries with deleted
         // entries
         BatchOperation batch = meta.getStore().getBatchHandler()
-                .initBatchOperation();
+            .initBatchOperation();
         Table<String, ChunkInfoList> deletedBlocksTable =
-                meta.getStore().getDeletedBlocksTable();
-        for (String entry: succeedBlocks) {
+            meta.getStore().getDeletedBlocksTable();
+        for (String entry : succeedBlocks) {
           List<ContainerProtos.ChunkInfo> chunkList =
-                  blockDataTable.get(entry).getChunks();
+              blockDataTable.get(entry).getChunks();
           String blockId = entry.substring(
-                      OzoneConsts.DELETING_KEY_PREFIX.length());
+              OzoneConsts.DELETING_KEY_PREFIX.length());
 
           deletedBlocksTable.putWithBatch(
-                  batch, blockId,
-                  new ChunkInfoList(chunkList));
+              batch, blockId,
+              new ChunkInfoList(chunkList));
           blockDataTable.deleteWithBatch(batch, entry);
         }
 
         int deleteBlockCount = succeedBlocks.size();
-        containerData.updateAndCommitDBCounters(meta, batch, deleteBlockCount);
+        containerData.updateAndCommitDBCounters(meta.getStore(), batch,
+            deleteBlockCount);
 
         // update count of pending deletion blocks and block count in in-memory
         // container status.

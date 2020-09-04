@@ -56,6 +56,7 @@ import org.apache.hadoop.ozone.container.common.impl.ChunkLayOutVersion;
 import org.apache.hadoop.ozone.container.common.impl.ContainerData;
 import org.apache.hadoop.ozone.container.common.impl.ContainerSet;
 import org.apache.hadoop.ozone.container.common.interfaces.Container;
+import org.apache.hadoop.ozone.container.common.interfaces.ContainerMetadataProvider;
 import org.apache.hadoop.ozone.container.common.interfaces.Handler;
 import org.apache.hadoop.ozone.container.common.interfaces.VolumeChoosingPolicy;
 import org.apache.hadoop.ozone.container.common.transport.server.ratis.DispatcherContext;
@@ -103,6 +104,7 @@ public class KeyValueHandler extends Handler {
   private static final Logger LOG = LoggerFactory.getLogger(
       KeyValueHandler.class);
 
+  private ContainerMetadataProvider containerMetadataProvider;
   private final ContainerType containerType;
   private final BlockManager blockManager;
   private final ChunkManager chunkManager;
@@ -914,7 +916,7 @@ public class KeyValueHandler extends Handler {
         conf);
 
     populateContainerPathFields(container);
-    container.importContainerData(rawContainerStream, packer);
+    container.importContainerData(rawContainerStream, containerMetadataProvider, packer);
     sendICR(container);
     return container;
 
@@ -928,7 +930,7 @@ public class KeyValueHandler extends Handler {
     container.readLock();
     try {
       final KeyValueContainer kvc = (KeyValueContainer) container;
-      kvc.exportContainerData(outputStream, packer);
+      kvc.exportContainerData(outputStream, containerMetadataProvider, packer);
     } finally {
       container.readUnlock();
     }
@@ -991,7 +993,7 @@ public class KeyValueHandler extends Handler {
             "Cannot quasi close container #" + container.getContainerData()
                 .getContainerID() + " while in " + state + " state.", error);
       }
-      container.quasiClose();
+      container.quasiClose(containerMetadataProvider);
       sendICR(container);
     } finally {
       container.writeUnlock();
@@ -1023,7 +1025,7 @@ public class KeyValueHandler extends Handler {
             "Cannot close container #" + container.getContainerData()
                 .getContainerID() + " while in " + state + " state.", error);
       }
-      container.close();
+      container.close(containerMetadataProvider);
       sendICR(container);
     } finally {
       container.writeUnlock();

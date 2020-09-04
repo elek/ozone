@@ -22,17 +22,17 @@ import java.io.IOException;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import com.google.common.util.concurrent.Striped;
 import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.ozone.OzoneConfigKeys;
-
-import com.google.common.base.Preconditions;
-import org.apache.commons.collections.MapIterator;
-import org.apache.commons.collections.map.LRUMap;
 import org.apache.hadoop.ozone.OzoneConsts;
-import org.apache.hadoop.ozone.container.metadata.DatanodeStore;
 import org.apache.hadoop.ozone.container.metadata.DatanodeStoreSchemaOneImpl;
 import org.apache.hadoop.ozone.container.metadata.DatanodeStoreSchemaTwoImpl;
+import org.apache.hadoop.ozone.container.metadata.ManagedDatanodeStore;
+
+import com.google.common.base.Preconditions;
+import com.google.common.util.concurrent.Striped;
+import org.apache.commons.collections.MapIterator;
+import org.apache.commons.collections.map.LRUMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -143,7 +143,7 @@ public final class ContainerCache extends LRUMap {
       }
 
       try {
-        DatanodeStore store;
+        ManagedDatanodeStore store;
 
         if (schemaVersion.equals(OzoneConsts.SCHEMA_V1)) {
           store = new DatanodeStoreSchemaOneImpl(conf,

@@ -30,7 +30,6 @@ import org.apache.hadoop.ozone.container.keyvalue.KeyValueContainerData;
 
 import com.google.common.base.Preconditions;
 import static org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.Result.NO_SUCH_BLOCK;
-import static org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.Result.UNABLE_TO_READ_METADATA_DB;
 
 /**
  * Utils functions to help block functions.
@@ -41,35 +40,7 @@ public final class BlockUtils {
   private BlockUtils() {
 
   }
-  /**
-   * Get a DB handler for a given container.
-   * If the handler doesn't exist in cache yet, first create one and
-   * add into cache. This function is called with containerManager
-   * ReadLock held.
-   *
-   * @param containerData containerData.
-   * @param conf configuration.
-   * @return MetadataStore handle.
-   * @throws StorageContainerException
-   */
-  public static ReferenceCountedDB getDB(KeyValueContainerData containerData,
-                                    ConfigurationSource conf) throws
-      StorageContainerException {
-    Preconditions.checkNotNull(containerData);
-    ContainerCache cache = ContainerCache.getInstance(conf);
-    Preconditions.checkNotNull(cache);
-    Preconditions.checkNotNull(containerData.getDbFile());
-    try {
-      return cache.getDB(containerData.getContainerID(), containerData
-          .getContainerDBType(), containerData.getDbFile().getAbsolutePath(),
-              containerData.getSchemaVersion(), conf);
-    } catch (IOException ex) {
-      String message = String.format("Error opening DB. Container:%s " +
-          "ContainerPath:%s", containerData.getContainerID(), containerData
-          .getDbFile().getPath());
-      throw new StorageContainerException(message, UNABLE_TO_READ_METADATA_DB);
-    }
-  }
+
   /**
    * Remove a DB handler from cache.
    *

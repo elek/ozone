@@ -43,12 +43,12 @@ import org.apache.hadoop.ozone.OzoneConsts;
 import org.apache.hadoop.ozone.container.common.helpers.ContainerUtils;
 import org.apache.hadoop.ozone.container.common.impl.ContainerDataYaml;
 import org.apache.hadoop.ozone.container.common.interfaces.Container;
+import org.apache.hadoop.ozone.container.common.interfaces.ContainerMetadataLease;
+import org.apache.hadoop.ozone.container.common.interfaces.ContainerMetadataProvider;
 import org.apache.hadoop.ozone.container.common.interfaces.ContainerPacker;
 import org.apache.hadoop.ozone.container.common.interfaces.VolumeChoosingPolicy;
-import org.apache.hadoop.ozone.container.common.utils.ReferenceCountedDB;
 import org.apache.hadoop.ozone.container.common.volume.HddsVolume;
 import org.apache.hadoop.ozone.container.common.volume.VolumeSet;
-import org.apache.hadoop.ozone.container.keyvalue.helpers.BlockUtils;
 import org.apache.hadoop.ozone.container.keyvalue.helpers.KeyValueContainerLocationUtil;
 import org.apache.hadoop.ozone.container.keyvalue.helpers.KeyValueContainerUtil;
 import org.apache.hadoop.util.DiskChecker.DiskOutOfSpaceException;
@@ -60,7 +60,6 @@ import static org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.Res
 import static org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.Result.CONTAINER_INTERNAL_ERROR;
 import static org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.Result.CONTAINER_NOT_OPEN;
 import static org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.Result.DISK_OUT_OF_SPACE;
-import static org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.Result.ERROR_IN_COMPACT_DB;
 import static org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.Result.ERROR_IN_DB_SYNC;
 import static org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.Result.INVALID_CONTAINER_STATE;
 import static org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.Result.UNSUPPORTED_REQUEST;
@@ -87,9 +86,9 @@ public class KeyValueContainer implements Container<KeyValueContainerData> {
       ConfigurationSource
       ozoneConfig) {
     Preconditions.checkNotNull(containerData,
-            "KeyValueContainerData cannot be null");
+        "KeyValueContainerData cannot be null");
     Preconditions.checkNotNull(ozoneConfig,
-            "Ozone configuration cannot be null");
+        "Ozone configuration cannot be null");
     this.config = ozoneConfig;
     this.containerData = containerData;
   }
@@ -130,8 +129,8 @@ public class KeyValueContainer implements Container<KeyValueContainerData> {
       // Therefore, always use the newest schema version.
       containerData.setSchemaVersion(OzoneConsts.SCHEMA_LATEST);
       KeyValueContainerUtil.createContainerMetaData(containerID,
-              containerMetaDataPath, chunksPath, dbFile,
-              containerData.getSchemaVersion(), config);
+          containerMetaDataPath, chunksPath, dbFile,
+          containerData.getSchemaVersion(), config);
 
       //Set containerData for the KeyValueContainer.
       containerData.setChunksPath(chunksPath.getPath());
@@ -293,15 +292,15 @@ public class KeyValueContainer implements Container<KeyValueContainerData> {
   }
 
   @Override
-  public void quasiClose() throws StorageContainerException {
+  public void quasiClose(ContainerMetadataProvider containerMetadataProvider) throws StorageContainerException {
     // The DB must be synced during close operation
-    flushAndSyncDB();
+    flushAndSyncDB(containerMetadataProvider);
 
     writeLock();
     try {
       // Second sync should be a very light operation as sync has already
       // been done outside the lock.
-      flushAndSyncDB();
+      flushAndSyncDB(containerMetadataProvider);
       updateContainerData(containerData::quasiCloseContainer);
     } finally {
       writeUnlock();
@@ -309,15 +308,15 @@ public class KeyValueContainer implements Container<KeyValueContainerData> {
   }
 
   @Override
-  public void close() throws StorageContainerException {
+  public void close(ContainerMetadataProvider containerMetadataProvider) throws StorageContainerException {
     // The DB must be synced during close operation
-    flushAndSyncDB();
+    flushAndSyncDB(containerMetadataProvider);
 
     writeLock();
     try {
       // Second sync should be a very light operation as sync has already
       // been done outside the lock.
-      flushAndSyncDB();
+      flushAndSyncDB(containerMetadataProvider);
       updateContainerData(containerData::closeContainer);
     } finally {
       writeUnlock();
@@ -366,23 +365,24 @@ public class KeyValueContainer implements Container<KeyValueContainerData> {
       throw ex;
     }
   }
-
-  private void compactDB() throws StorageContainerException {
+//
+//  private void compactDB() throws StorageContainerException {
+//
+//    try {
+//      try (ContainerMetadataLease db = leaseDbStore()) {
+//        db.getStore().compactDB();
+//      }
+//    } catch (StorageContainerException ex) {
+//      throw ex;
+//    } catch (IOException ex) {
+//      LOG.error("Error in DB compaction while closing container", ex);
+//      throw new StorageContainerException(ex, ERROR_IN_COMPACT_DB);
+//    }
+//  }
+//
+  private void flushAndSyncDB(ContainerMetadataProvider containerMetadataProvider) throws StorageContainerException {
     try {
-      try(ReferenceCountedDB db = BlockUtils.getDB(containerData, config)) {
-        db.getStore().compactDB();
-      }
-    } catch (StorageContainerException ex) {
-      throw ex;
-    } catch (IOException ex) {
-      LOG.error("Error in DB compaction while closing container", ex);
-      throw new StorageContainerException(ex, ERROR_IN_COMPACT_DB);
-    }
-  }
-
-  private void flushAndSyncDB() throws StorageContainerException {
-    try {
-      try (ReferenceCountedDB db = BlockUtils.getDB(containerData, config)) {
+      try (ContainerMetadataLease db = containerMetadataProvider.getMetadata(containerData)) {
         db.getStore().flushLog(true);
         LOG.info("Container {} is synced with bcsId {}.",
             containerData.getContainerID(),
@@ -456,6 +456,7 @@ public class KeyValueContainer implements Container<KeyValueContainerData> {
 
   @Override
   public void importContainerData(InputStream input,
+      ContainerMetadataProvider cmp,
       ContainerPacker<KeyValueContainerData> packer) throws IOException {
     writeLock();
     try {
@@ -492,7 +493,7 @@ public class KeyValueContainer implements Container<KeyValueContainerData> {
       update(originalContainerData.getMetadata(), true);
 
       //fill in memory stat counter (keycount, byte usage)
-      KeyValueContainerUtil.parseKVContainerData(containerData, config);
+      KeyValueContainerUtil.parseKVContainerData(containerData, cmp, config);
 
     } catch (Exception ex) {
       //delete all the temporary data in case of any exception.
@@ -514,6 +515,7 @@ public class KeyValueContainer implements Container<KeyValueContainerData> {
 
   @Override
   public void exportContainerData(OutputStream destination,
+      ContainerMetadataProvider containerMetadataProvider,
       ContainerPacker<KeyValueContainerData> packer) throws IOException {
     // Closed/ Quasi closed containers are considered for replication by
     // replication manager if they are under-replicated.
@@ -526,7 +528,6 @@ public class KeyValueContainer implements Container<KeyValueContainerData> {
               "Where as ContainerId="
               + getContainerData().getContainerID() + " is in state " + state);
     }
-    compactDB();
     packer.pack(this, destination);
   }
 

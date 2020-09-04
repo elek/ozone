@@ -25,18 +25,19 @@ import java.io.IOException;
 import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos;
 import org.apache.hadoop.hdds.scm.container.common.helpers.StorageContainerException;
-import com.google.common.base.Preconditions;
 import org.apache.hadoop.ozone.common.Storage;
 import org.apache.hadoop.ozone.container.common.helpers.ContainerUtils;
 import org.apache.hadoop.ozone.container.common.impl.ContainerData;
 import org.apache.hadoop.ozone.container.common.impl.ContainerDataYaml;
 import org.apache.hadoop.ozone.container.common.impl.ContainerSet;
+import org.apache.hadoop.ozone.container.common.interfaces.ContainerMetadataProvider;
 import org.apache.hadoop.ozone.container.common.volume.HddsVolume;
 import org.apache.hadoop.ozone.container.common.volume.MutableVolumeSet;
 import org.apache.hadoop.ozone.container.keyvalue.KeyValueContainer;
 import org.apache.hadoop.ozone.container.keyvalue.KeyValueContainerData;
-
 import org.apache.hadoop.ozone.container.keyvalue.helpers.KeyValueContainerUtil;
+
+import com.google.common.base.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,6 +75,7 @@ public class ContainerReader implements Runnable {
   private final ConfigurationSource config;
   private final File hddsVolumeDir;
   private final MutableVolumeSet volumeSet;
+  private ContainerMetadataProvider containerMetadataProvider;
 
   ContainerReader(MutableVolumeSet volSet, HddsVolume volume, ContainerSet cset,
       ConfigurationSource conf) {
@@ -180,7 +182,8 @@ public class ContainerReader implements Runnable {
             containerData;
         containerData.setVolume(hddsVolume);
 
-        KeyValueContainerUtil.parseKVContainerData(kvContainerData, config);
+        KeyValueContainerUtil.parseKVContainerData(kvContainerData,
+            containerMetadataProvider, config);
         KeyValueContainer kvContainer = new KeyValueContainer(
             kvContainerData, config);
 
