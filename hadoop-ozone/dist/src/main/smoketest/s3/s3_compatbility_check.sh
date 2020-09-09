@@ -38,10 +38,11 @@ test() {
 
 mkdir -p results
 
-test objectputget
-test objectdelete
-test objectcopy
-test objectmultidelete
-test MultipartUpload
+test s3-vs-filepath
+#test objectputget
+#test objectdelete
+#test objectcopy
+#test objectmultidelete
+#test MultipartUpload
 
 rebot --outputdir results/ results/*.xml
