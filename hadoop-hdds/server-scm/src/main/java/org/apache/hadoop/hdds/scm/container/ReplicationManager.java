@@ -301,7 +301,7 @@ public class ReplicationManager
        * container if possible.
        */
       if (state == LifeCycleState.QUASI_CLOSED &&
-          canForceCloseContainer(container, replicas)) {
+          canForceCloseContainer(container, replicas, storageClass)) {
         forceCloseContainer(container, replicas);
         return;
       }
@@ -337,7 +337,7 @@ public class ReplicationManager
        * action.
        */
       if (isContainerUnderReplicated(container, replicas, storageClass)) {
-        handleUnderReplicatedContainer(container, replicas);
+        handleUnderReplicatedContainer(container, replicas, storageClass);
         return;
       }
 
@@ -346,7 +346,7 @@ public class ReplicationManager
        * action.
        */
       if (isContainerOverReplicated(container, replicas, storageClass)) {
-        handleOverReplicatedContainer(container, replicas);
+        handleOverReplicatedContainer(container, replicas, storageClass);
         return;
       }
 
@@ -472,10 +472,12 @@ public class ReplicationManager
    * @return true if we can force close the container, false otherwise
    */
   private boolean canForceCloseContainer(final ContainerInfo container,
-      final Set<ContainerReplica> replicas) {
+      final Set<ContainerReplica> replicas,
+      final StorageClass storageClass) {
     Preconditions.assertTrue(container.getState() ==
         LifeCycleState.QUASI_CLOSED);
-    final int replicationFactor = container.getReplicationFactor().getNumber();
+    final int replicationFactor =
+        storageClass.getClosedStateConfiguration().getReplicationFactor();
     final long uniqueQuasiClosedReplicaCount = replicas.stream()
         .filter(r -> r.getState() == State.QUASI_CLOSED)
         .map(ContainerReplica::getOriginDatanodeId)
@@ -529,7 +531,8 @@ public class ReplicationManager
    * @param replicas Set of ContainerReplicas
    */
   private void handleUnderReplicatedContainer(final ContainerInfo container,
-      final Set<ContainerReplica> replicas) {
+      final Set<ContainerReplica> replicas,
+      final StorageClass storageClass) {
     LOG.debug("Handling under-replicated container: {}",
         container.getContainerID());
     try {
@@ -553,10 +556,9 @@ public class ReplicationManager
           .map(ContainerReplica::getDatanodeDetails)
           .collect(Collectors.toList());
       if (source.size() > 0) {
-        final int replicationFactor = this.storageClassRegistry
-            .getStorageClass(container.getStorageClass())
-            .getOpenStateConfiguration()
-            .getReplicationFactor().getNumber();
+        final int replicationFactor = storageClass
+            .getClosedStateConfiguration()
+            .getReplicationFactor();
         // Want to check if the container is mis-replicated after considering
         // inflight add and delete.
         // Create a new list from source (healthy replicas minus pending delete)
@@ -631,10 +633,12 @@ public class ReplicationManager
    * @param replicas Set of ContainerReplicas
    */
   private void handleOverReplicatedContainer(final ContainerInfo container,
-      final Set<ContainerReplica> replicas) {
+      final Set<ContainerReplica> replicas,
+      final StorageClass storageClass) {
 
     final ContainerID id = container.containerID();
-    final int replicationFactor = container.getReplicationFactor().getNumber();
+    final int replicationFactor = storageClass.getClosedStateConfiguration()
+        .getReplicationFactor();
     // Don't consider inflight replication while calculating excess here.
     int excess = replicas.size() - replicationFactor -
         inflightDeletion.getOrDefault(id, Collections.emptyList()).size();
