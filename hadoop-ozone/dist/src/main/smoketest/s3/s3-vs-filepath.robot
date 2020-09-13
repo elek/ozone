@@ -23,7 +23,7 @@ Test Timeout        5 minutes
 Suite Setup         Setup s3 tests
 
 *** Variables ***
-${ENDPOINT_URL}       http://s3g:9878
+${ENDPOINT_URL}       http://localhost:9878
 ${BUCKET}             generated
 
 *** Keywords ***
@@ -35,30 +35,49 @@ Create Dest Bucket
 
 
 *** Test Cases ***
-#Key with double slash
-#                        Execute AWSS3ApiCli        put-object --bucket ${BUCKET} --key ${PREFIX}/comp//file1 --body /tmp/conflict
-#     ${result} =        Execute AWSS3ApiCli        list-objects --bucket ${BUCKET} --prefix ${PREFIX}/comp
-#                        Should contain             ${result}       ${PREFIX}/comp//file1
-#     ${result} =        Execute AWSS3Cli           ls s3://${BUCKET}/${PREFIX}/comp
-#                        Should contain             ${result}       PRE comp/
-#     ${result} =        Execute AWSS3Cli           ls s3://${BUCKET}/${PREFIX}/comp/
-#                        Should contain             ${result}       PRE /
-#
-
-#Key with dot
-#                        Execute AWSS3ApiCli        put-object --bucket ${BUCKET} --key ${PREFIX}/comp/./file1 --body /tmp/conflict
-#     ${result} =        Execute AWSS3ApiCli        list-objects --bucket ${BUCKET} --prefix ${PREFIX}/comp
-#                        Should contain             ${result}       ${PREFIX}/comp/./file1
-#     ${result} =        Execute AWSS3Cli           ls s3://${BUCKET}/${PREFIX}/comp
-#                        Should contain             ${result}       PRE comp/
-#     ${result} =                    ls s3://${BUCKET}/${PREFIX}/comp/
-#                        Should contain             ${result}       PRE ./
-
-Key with dotdot
-                        Execute AWSS3ApiCli        put-object --bucket ${BUCKET} --key ${PREFIX}/comp/../file1 --body /tmp/conflict
+Key with double slash
+                        Execute                    echo "Testcontent" > /tmp/conflict
+                        Execute AWSS3ApiCli        put-object --bucket ${BUCKET} --key ${PREFIX}/comp//file1 --body /tmp/conflict
      ${result} =        Execute AWSS3ApiCli        list-objects --bucket ${BUCKET} --prefix ${PREFIX}/comp
                         Should contain             ${result}       ${PREFIX}/comp//file1
      ${result} =        Execute AWSS3Cli           ls s3://${BUCKET}/${PREFIX}/comp
                         Should contain             ${result}       PRE comp/
      ${result} =        Execute AWSS3Cli           ls s3://${BUCKET}/${PREFIX}/comp/
+                        Should contain             ${result}       PRE /
+
+Key with dot
+                        Execute                    echo "Testcontent" > /tmp/conflict
+                        Execute AWSS3ApiCli        put-object --bucket ${BUCKET} --key ${PREFIX}/kwd/./file1 --body /tmp/conflict
+     ${result} =        Execute AWSS3ApiCli        list-objects --bucket ${BUCKET} --prefix ${PREFIX}/kwd
+                        Should contain             ${result}       ${PREFIX}/kwd/./file1
+     ${result} =        Execute AWSS3Cli           ls s3://${BUCKET}/${PREFIX}/kwd
+                        Should contain             ${result}       PRE kwd/
+     ${result} =        Execute AWSS3Cli           ls s3://${BUCKET}/${PREFIX}/kwd/
+                        Should contain             ${result}       PRE .
+
+Key with dotdot
+                        Execute                    echo "Testcontent" > /tmp/conflict
+                        Execute AWSS3ApiCli        put-object --bucket ${BUCKET} --key ${PREFIX}/kwdd/../file1 --body /tmp/conflict
+     ${result} =        Execute AWSS3ApiCli        list-objects --bucket ${BUCKET} --prefix ${PREFIX}/kwdd
+                        Should contain             ${result}       ${PREFIX}/kwdd/../file1
+     ${result} =        Execute AWSS3Cli           ls s3://${BUCKET}/${PREFIX}/kwdd
+                        Should contain             ${result}       PRE kwdd/
+     ${result} =        Execute AWSS3Cli           ls s3://${BUCKET}/${PREFIX}/kwdd/
                         Should contain             ${result}       PRE ..
+
+Key with closing slash
+                        Execute                    echo "Testcontent" > /tmp/testfile
+                        Execute AWSS3ApiCli        put-object --bucket ${BUCKET} --key ${PREFIX}/ks/prefix/file1/ --body /tmp/testfile
+     ${result} =        Execute AWSS3ApiCli        list-objects --bucket ${BUCKET} --prefix ${PREFIX}/ks/ | jq -r '.Contents[] | .Key'
+                        Should contain             ${result}       ${PREFIX}/ks/prefix/file1/
+     ${result} =        Execute AWSS3ApiCli        list-objects --bucket ${BUCKET} --prefix ${PREFIX}/ks | jq -r '.Contents[] | .Key' | wc -l
+                        Should Be Equal            ${result}       1
+
+
+Empty key without closing slash
+                        Execute                    echo "" > /tmp/testfile
+                        Execute AWSS3ApiCli        put-object --bucket ${BUCKET} --key ${PREFIX}/kwos/prefix/file1 --body /tmp/testfile
+     ${result} =        Execute AWSS3ApiCli        list-objects --bucket ${BUCKET} --prefix ${PREFIX}/kwos | jq -r '.Contents[] | .Key'
+                        Should contain             ${result}       ${PREFIX}/kwos/prefix/file1
+     ${result} =        Execute AWSS3ApiCli        list-objects --bucket ${BUCKET} --prefix ${PREFIX}/kwos | jq -r '.Contents[] | .Key' | wc -l
+                        Should Be Equal            ${result}       1
