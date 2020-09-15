@@ -89,6 +89,26 @@ public class StaticStorageClassRegistry implements StorageClassRegistry {
     }
   };
 
+  public static final StorageClass CLOSE_TWO = new StorageClass() {
+
+    @Override
+    public OpenStateConfiguration getOpenStateConfiguration() {
+      return new OpenStateConfiguration(
+          HddsProtos.ReplicationType.RATIS,
+          HddsProtos.ReplicationFactor.THREE);
+    }
+
+    @Override
+    public ClosedStateConfiguration getClosedStateConfiguration() {
+      return new ClosedStateConfiguration(2);
+    }
+
+    @Override
+    public String getName() {
+      return "CLOSE_TWO";
+    }
+  };
+
   private static final Map<String, StorageClass> STRING_STORAGE_CLASS_MAP =
       new HashMap<>();
   static {
@@ -96,6 +116,7 @@ public class StaticStorageClassRegistry implements StorageClassRegistry {
     STRING_STORAGE_CLASS_MAP.put(REDUCED_REDUNDANCY.getName(),
         REDUCED_REDUNDANCY);
     STRING_STORAGE_CLASS_MAP.put(LEGACY.getName(), LEGACY);
+    STRING_STORAGE_CLASS_MAP.put(CLOSE_TWO.getName(), CLOSE_TWO);
   }
 
   @Override
