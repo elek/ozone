@@ -20,7 +20,7 @@ description: Add empty dir based ephemeral persistence
   trigger:
     metadata:
       labels:
-        app.kubernetes.io/component: ozone
+        app: ozone
   path:
     - spec
     - template
@@ -35,7 +35,7 @@ description: Add empty dir based ephemeral persistence
   trigger:
     metadata:
       labels:
-        app.kubernetes.io/component: ozone
+        app: ozone
   path:
     - spec
     - template

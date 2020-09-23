@@ -16,15 +16,16 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: scm
+  name: ozone-scm
   labels:
-    app.kubernetes.io/component: ozone
+    app: ozone
+    component: scm
 spec:
   selector:
     matchLabels:
       app: ozone
       component: scm
-  serviceName: scm
+  serviceName: ozone-scm
   replicas: 1
   template:
     metadata:

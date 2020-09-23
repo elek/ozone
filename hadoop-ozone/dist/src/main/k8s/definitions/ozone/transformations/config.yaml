@@ -23,4 +23,4 @@
     - envFrom
   value:
     - configMapRef:
-        name: config
+        name: ozone-config

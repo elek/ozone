@@ -19,7 +19,7 @@ description: Enable profiler endpoint.
 - type: Add
   trigger:
     metadata:
-      name: config
+      name: ozone-config
   path:
     - data
   value:

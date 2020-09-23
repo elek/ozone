@@ -16,15 +16,16 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: datanode
+  name: ozone-datanode
   labels:
-    app.kubernetes.io/component: ozone
+    app: ozone
+    component: datanode
 spec:
   selector:
     matchLabels:
       app: ozone
       component: datanode
-  serviceName: datanode
+  serviceName: ozone-datanode
   replicas: 3
   template:
     metadata:
@@ -34,7 +35,7 @@ spec:
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "9882"
-        prometheus.io/path: "/prom"
+        prometheus.io/path: /prom
     spec:
       affinity:
         podAntiAffinity:
@@ -45,6 +46,10 @@ spec:
                 operator: In
                 values:
                 - datanode
+              - key: app
+                operator: In
+                values:
+                - ozone
             topologyKey: "kubernetes.io/hostname"
       securityContext:
         fsGroup: 1000

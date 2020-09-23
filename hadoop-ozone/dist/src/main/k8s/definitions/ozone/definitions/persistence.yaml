@@ -33,7 +33,7 @@ description: Add real PVC based persistence
 - type: Add
   trigger:
      metadata:
-        name: datanode
+       name: ozone-datanode
   path:
     - spec
     - template
@@ -53,7 +53,7 @@ description: Add real PVC based persistence
   trigger:
     metadata:
       labels:
-        app.kubernetes.io/component: ozone
+        app: ozone
   path:
     - spec
     - template

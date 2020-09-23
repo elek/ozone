@@ -19,7 +19,8 @@ kind: Deployment
 metadata:
   name: freon
   labels:
-    app.kubernetes.io/component: ozone
+    app: ozone
+    component: freon
 spec:
   replicas: 1
   selector:

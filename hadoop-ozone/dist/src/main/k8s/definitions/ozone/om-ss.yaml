@@ -16,15 +16,16 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: om
+  name: ozone-om
   labels:
-    app.kubernetes.io/component: ozone
+    app: ozone
+    component: om
 spec:
   selector:
     matchLabels:
       app: ozone
       component: om
-  serviceName: om
+  serviceName: ozone-om
   replicas: 1
   template:
     metadata:
@@ -36,17 +37,17 @@ spec:
         prometheus.io/port: "9874"
         prometheus.io/path: "/prom"
     spec:
-      securityContext:
-        fsGroup: 1000
+      initContainers:
+      - name: init
+        image: flokkr/ozone
+        args: ["ozone","om","--init"]
+        env:
+        - name: WAITFOR
+          value: ozone-scm-0.ozone-scm:9876
       containers:
       - name: om
         image: "@docker.image@"
         args: ["ozone","om"]
-        env:
-        - name: WAITFOR
-          value: scm-0.scm:9876
-        - name: ENSURE_OM_INITIALIZED
-          value: /data/metadata/om/current/VERSION
         livenessProbe:
           tcpSocket:
             port: 9862

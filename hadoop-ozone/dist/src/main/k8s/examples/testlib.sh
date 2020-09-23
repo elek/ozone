@@ -38,8 +38,8 @@ grep_log() {
 wait_for_startup(){
    print_phase "Waiting until the k8s cluster is running"
    retry all_pods_are_running
-   retry grep_log scm-0 "SCM exiting safe mode."
-   retry grep_log om-0 "HTTP server of ozoneManager listening"
+   retry grep_log ozone-scm-0 "SCM exiting safe mode."
+   retry grep_log ozone-om-0 "HTTP server of ozoneManager listening"
    print_phase "Cluster is up and running"
 }
 
@@ -128,7 +128,7 @@ execute_robot_test() {
 
    kubectl exec -it "${CONTAINER}" -- bash -c 'rm -rf /tmp/report'
    kubectl exec -it "${CONTAINER}" -- bash -c 'mkdir -p  /tmp/report'
-   kubectl exec -it "${CONTAINER}" -- robot --nostatusrc -d /tmp/report ${ARGUMENTS[@]} || true
+   kubectl exec -it "${CONTAINER}" -- robot -v SCM_HOST:ozone-scm-0.ozone-scm --nostatusrc -d /tmp/report ${ARGUMENTS[@]} || true
    kubectl cp "${CONTAINER}":/tmp/report/output.xml "result/$CONTAINER-$RANDOM.xml" || true
 }
 

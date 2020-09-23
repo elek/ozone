@@ -19,7 +19,7 @@ description: remove scheduling rules to make it possible to run multiple datanod
 - type: Remove
   trigger:
     metadata:
-      name: datanode
+      name: ozone-datanode
   path:
     - spec
     - template
