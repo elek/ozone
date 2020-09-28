@@ -25,7 +25,7 @@ import java.util.ListIterator;
 
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
-import org.apache.hadoop.hdds.scm.XceiverClientManager;
+import org.apache.hadoop.hdds.scm.XCeiverClientFactory;
 import org.apache.hadoop.hdds.scm.container.common.helpers.ExcludeList;
 import org.apache.hadoop.hdds.scm.pipeline.PipelineID;
 import org.apache.hadoop.hdds.scm.storage.BufferPool;
@@ -37,11 +37,11 @@ import org.apache.hadoop.ozone.om.helpers.OmKeyLocationInfoGroup;
 import org.apache.hadoop.ozone.om.helpers.OmMultipartCommitUploadPartInfo;
 import org.apache.hadoop.ozone.om.protocol.OzoneManagerProtocol;
 import org.apache.hadoop.security.UserGroupInformation;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class manages the stream entries list and handles block allocation
@@ -56,7 +56,7 @@ public class BlockOutputStreamEntryPool {
   private int currentStreamIndex;
   private final OzoneManagerProtocol omClient;
   private final OmKeyArgs keyArgs;
-  private final XceiverClientManager xceiverClientManager;
+  private final XCeiverClientFactory xceiverClientManager;
   private final int chunkSize;
   private final String requestID;
   private final int streamBufferSize;
@@ -81,7 +81,7 @@ public class BlockOutputStreamEntryPool {
       long size, long watchTimeout, ContainerProtos.ChecksumType checksumType,
       int bytesPerChecksum, String uploadID, int partNumber,
       boolean isMultipart, OmKeyInfo info,
-      XceiverClientManager xceiverClientManager, long openID) {
+      XCeiverClientFactory xceiverClientManager, long openID) {
     streamEntries = new ArrayList<>();
     currentStreamIndex = 0;
     this.omClient = omClient;
@@ -257,7 +257,7 @@ public class BlockOutputStreamEntryPool {
     return streamEntries;
   }
 
-  XceiverClientManager getXceiverClientManager() {
+  XCeiverClientFactory getXceiverClientManager() {
     return xceiverClientManager;
   }
 

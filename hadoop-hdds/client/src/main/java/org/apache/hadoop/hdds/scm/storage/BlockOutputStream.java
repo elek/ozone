@@ -37,7 +37,7 @@ import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.BlockData;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.ChecksumType;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.ChunkInfo;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.KeyValue;
-import org.apache.hadoop.hdds.scm.XceiverClientManager;
+import org.apache.hadoop.hdds.scm.XCeiverClientFactory;
 import org.apache.hadoop.hdds.scm.XceiverClientReply;
 import org.apache.hadoop.hdds.scm.XceiverClientSpi;
 import org.apache.hadoop.hdds.scm.container.common.helpers.StorageContainerException;
@@ -80,7 +80,7 @@ public class BlockOutputStream extends OutputStream {
   private AtomicReference<BlockID> blockID;
 
   private final BlockData.Builder containerBlockData;
-  private XceiverClientManager xceiverClientManager;
+  private XCeiverClientFactory xceiverClientManager;
   private XceiverClientSpi xceiverClient;
   private final int bytesPerChecksum;
   private int chunkIndex;
@@ -139,7 +139,7 @@ public class BlockOutputStream extends OutputStream {
    */
   @SuppressWarnings("parameternumber")
   public BlockOutputStream(BlockID blockID,
-      XceiverClientManager xceiverClientManager, Pipeline pipeline,
+      XCeiverClientFactory xceiverClientManager, Pipeline pipeline,
       int streamBufferSize, long streamBufferFlushSize,
       boolean streamBufferFlushDelay, long streamBufferMaxSize,
       BufferPool bufferPool, ChecksumType checksumType,
