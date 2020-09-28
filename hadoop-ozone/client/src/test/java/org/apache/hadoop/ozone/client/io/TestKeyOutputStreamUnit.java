@@ -63,6 +63,10 @@ public class TestKeyOutputStreamUnit {
         .build();
   }
 
+  public static void main(String[] args) throws IOException {
+    new TestKeyOutputStreamUnit().read();
+  }
+
   @Test
   public void read() throws IOException {
 
@@ -103,18 +107,21 @@ public class TestKeyOutputStreamUnit {
         )
         .build();
 
+
     LengthInputStream kis = KeyInputStream.getFromOmKeyInfo(key,
         new MockXCeiverManager(),
         false,
         omKeyInfo -> omKeyInfo);
 
-    int bufferSize = 1024;
+    int bufferSize = 100;
     byte[] data = new byte[bufferSize];
 
     final long iterations = blocks * 256l * 1024 * 1024 / bufferSize;
+    long allRead = 0;
     for (int i = 0; i < iterations; i++) {
-      System.out.println("read " + kis.read(data));
+      allRead += kis.read(data);
     }
+    System.out.println(allRead);
 
   }
 }
