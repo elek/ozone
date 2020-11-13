@@ -88,6 +88,8 @@ public class TestBlockOutputStream {
     blockSize = 2 * maxFlushSize;
     OzoneClientConfig config = new OzoneClientConfig();
     config.setChecksumType(ChecksumType.NONE);
+    config.setStreamBufferFlushDelay(false);
+
     conf.setFromObject(config);
 
     conf.setTimeDuration(HDDS_SCM_WATCHER_TIMEOUT, 1000, TimeUnit.MILLISECONDS);
@@ -95,10 +97,6 @@ public class TestBlockOutputStream {
     conf.setQuietMode(false);
     conf.setStorageSize(OzoneConfigKeys.OZONE_SCM_BLOCK_SIZE, 4,
         StorageUnit.MB);
-
-    OzoneClientConfig clientConfig = conf.getObject(OzoneClientConfig.class);
-    clientConfig.setStreamBufferFlushDelay(false);
-    conf.setFromObject(clientConfig);
 
     cluster = MiniOzoneCluster.newBuilder(conf)
         .setNumDatanodes(7)
