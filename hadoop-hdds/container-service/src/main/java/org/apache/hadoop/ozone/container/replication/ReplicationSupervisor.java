@@ -25,11 +25,11 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.hadoop.ozone.container.common.impl.ContainerSet;
 import org.apache.hadoop.ozone.container.replication.ReplicationTask.Status;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -107,10 +107,10 @@ public class ReplicationSupervisor {
     return containersInFlight.size();
   }
 
-  private final class TaskRunner implements Runnable {
+  public final class TaskRunner implements Runnable {
     private final ReplicationTask task;
 
-    private TaskRunner(ReplicationTask task) {
+    public TaskRunner(ReplicationTask task) {
       this.task = task;
     }
 
