@@ -116,7 +116,7 @@ public class GrpcReplicationClient implements AutoCloseable{
 
   @Override
   public void close() throws Exception {
-    shutdown();
+//    shutdown();
   }
 
   /**

@@ -26,7 +26,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Function;
 
 import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
@@ -88,7 +87,7 @@ public class SimpleContainerDownloader implements ContainerDownloader {
         if (result == null) {
           result = downloadContainer(containerId, datanode);
         } else {
-          result = result.thenApply(CompletableFuture::completedFuture)
+          result = result
               .exceptionally(t -> {
                 LOG.error("Error on replicating container: " + containerId, t);
                 try {
@@ -96,13 +95,13 @@ public class SimpleContainerDownloader implements ContainerDownloader {
                       new GrpcReplicationClient(datanode.getIpAddress(),
                           datanode.getPort(Name.STANDALONE).getValue(),
                           workingDirectory, securityConfig, caCert);
-                  return grpcReplicationClient.download(containerId);
+                  return grpcReplicationClient.download(containerId).join();
                 } catch (IOException e) {
                   LOG.error("Error on replicating container: " + containerId,
                       t);
                   return null;
                 }
-              }).thenCompose(Function.identity());
+              });
         }
       } catch (Exception ex) {
         LOG.error(String.format(
