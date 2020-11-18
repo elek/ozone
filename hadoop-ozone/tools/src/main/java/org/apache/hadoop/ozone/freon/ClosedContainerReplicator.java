@@ -16,6 +16,7 @@
  */
 package org.apache.hadoop.ozone.freon;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -40,12 +41,14 @@ import org.apache.hadoop.ozone.container.keyvalue.TarContainerPacker;
 import org.apache.hadoop.ozone.container.ozoneimpl.ContainerController;
 import org.apache.hadoop.ozone.container.replication.ContainerReplicator;
 import org.apache.hadoop.ozone.container.replication.DownloadAndImportReplicator;
+import org.apache.hadoop.ozone.container.replication.MeasuredReplicator;
 import org.apache.hadoop.ozone.container.replication.ReplicationSupervisor;
 import org.apache.hadoop.ozone.container.replication.ReplicationSupervisor.TaskRunner;
 import org.apache.hadoop.ozone.container.replication.ReplicationTask;
 import org.apache.hadoop.ozone.container.replication.SimpleContainerDownloader;
 
 import com.codahale.metrics.Timer;
+import org.jetbrains.annotations.NotNull;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
@@ -75,6 +78,55 @@ public class ClosedContainerReplicator extends BaseFreonGenerator implements
   @Override
   public Void call() throws Exception {
 
+    //logic same as the download+import on the destination datanode
+    OzoneConfiguration conf = initializeReplicationSupervisor();
+
+    final ContainerOperationClient containerOperationClient =
+        new ContainerOperationClient(conf);
+
+    final List<ContainerInfo> containerInfos =
+        containerOperationClient.listContainer(0L, 1_000_000);
+
+    replicationTasks = new ArrayList<>();
+
+    for (ContainerInfo container : containerInfos) {
+
+      final ContainerWithPipeline containerWithPipeline =
+          containerOperationClient
+              .getContainerWithPipeline(container.getContainerID());
+
+      if (container.getState() == LifeCycleState.CLOSED) {
+
+        final List<DatanodeDetails> datanodesWithContainer =
+            containerWithPipeline.getPipeline().getNodes();
+
+        final List<String> datanodeUUIDs =
+            datanodesWithContainer
+                .stream().map(DatanodeDetails::getUuidString)
+                .collect(Collectors.toList());
+
+        //if datanode is specific replicate only container if has a replica.
+        if (dataNode.equals("") || datanodeUUIDs.contains(dataNode)) {
+          replicationTasks.add(new ReplicationTask(container.getContainerID(),
+              datanodesWithContainer));
+        }
+      }
+
+    }
+
+    //important: override the max number of tasks.
+    setTestNo(replicationTasks.size());
+
+    init();
+
+    timer = getMetrics().timer("replicate-container");
+    runTests(this::replicateContainer);
+    return null;
+  }
+
+  @NotNull
+  private OzoneConfiguration initializeReplicationSupervisor()
+      throws IOException {
     String fakeDatanodeUuid = dataNode;
 
     if (fakeDatanodeUuid.equals("")) {
@@ -110,59 +162,23 @@ public class ClosedContainerReplicator extends BaseFreonGenerator implements
         new ContainerController(containerSet, handlers);
 
     ContainerReplicator replicator =
-        new DownloadAndImportReplicator(containerSet,
-            controller,
-            new SimpleContainerDownloader(conf, null),
-            new TarContainerPacker());
+        new MeasuredReplicator(
+            new DownloadAndImportReplicator(containerSet,
+                controller,
+                new SimpleContainerDownloader(conf, null),
+                new TarContainerPacker()));
 
     supervisor = new ReplicationSupervisor(containerSet, replicator, 10);
-
-    final ContainerOperationClient containerOperationClient =
-        new ContainerOperationClient(conf);
-
-    final List<ContainerInfo> containerInfos =
-        containerOperationClient.listContainer(0L, 1_000_000);
-
-    replicationTasks = new ArrayList<>();
-
-    for (ContainerInfo container : containerInfos) {
-
-      final ContainerWithPipeline containerWithPipeline =
-          containerOperationClient
-              .getContainerWithPipeline(container.getContainerID());
-
-      if (container.getState() == LifeCycleState.CLOSED) {
-
-        final List<DatanodeDetails> datanodesWithContainer =
-            containerWithPipeline.getPipeline().getNodes();
-
-        final List<String> datanodeUUIDs =
-            datanodesWithContainer
-                .stream().map(DatanodeDetails::getUuidString)
-                .collect(Collectors.toList());
-
-        //if datanode is specific replicate only container if has a replica.
-        if (dataNode.equals("") || datanodeUUIDs.contains(dataNode)) {
-          replicationTasks.add(new ReplicationTask(container.getContainerID(),
-              datanodesWithContainer));
-        }
-      }
-
-    }
-
-    //override the max number of tasks.
-    setTestNo(replicationTasks.size());
-
-    init();
-
-    timer = getMetrics().timer("replicate-container");
-    runTests(this::replicateContainer);
-    return null;
+    return conf;
   }
 
   private void replicateContainer(long counter) throws Exception {
-    final ReplicationTask replicationTask = replicationTasks.get((int) counter);
-    final TaskRunner taskRunner = supervisor.new TaskRunner(replicationTask);
-    taskRunner.run();
+    timer.time(() -> {
+      final ReplicationTask replicationTask =
+          replicationTasks.get((int) counter);
+      final TaskRunner taskRunner = supervisor.new TaskRunner(replicationTask);
+      taskRunner.run();
+      return null;
+    });
   }
 }
