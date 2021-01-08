@@ -115,6 +115,7 @@ public class ContainerInfo implements Comparator<ContainerInfo>,
         .setDeleteTransactionId(info.getDeleteTransactionId())
         .setReplicationFactor(info.getReplicationFactor())
         .setReplicationType(info.getReplicationType())
+        .setSequenceId(info.getSequenceId())
         .build();
 
     if (info.hasPipelineID()) {
@@ -214,7 +215,9 @@ public class ContainerInfo implements Comparator<ContainerInfo>,
         .setDeleteTransactionId(getDeleteTransactionId())
         .setReplicationFactor(getReplicationFactor())
         .setReplicationType(getReplicationType())
-        .setOwner(getOwner());
+        .setOwner(getOwner())
+        .setSequenceId(getSequenceId());
+
     if (getPipelineID() != null) {
       builder.setPipelineID(getPipelineID().getProtobuf());
     }

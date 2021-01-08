@@ -18,15 +18,15 @@
 
 package org.apache.hadoop.ozone.container.keyvalue;
 
-import com.google.common.primitives.Longs;
 import org.apache.hadoop.conf.StorageUnit;
 import org.apache.hadoop.hdds.client.BlockID;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos;
 
 import org.apache.hadoop.hdds.scm.container.common.helpers
     .StorageContainerException;
-import org.apache.hadoop.hdds.utils.MetadataStoreBuilder;
+import org.apache.hadoop.hdds.utils.db.Table;
 import org.apache.hadoop.ozone.OzoneConsts;
 import org.apache.hadoop.ozone.container.common.helpers.BlockData;
 import org.apache.hadoop.ozone.container.common.helpers.ChunkInfo;
@@ -38,6 +38,7 @@ import org.apache.hadoop.ozone.container.common.volume
 import org.apache.hadoop.ozone.container.common.volume.VolumeSet;
 import org.apache.hadoop.ozone.container.common.volume.MutableVolumeSet;
 import org.apache.hadoop.ozone.container.keyvalue.helpers.BlockUtils;
+import org.apache.hadoop.ozone.container.metadata.AbstractDatanodeStore;
 import org.apache.hadoop.test.GenericTestUtils;
 import org.apache.hadoop.util.DiskChecker;
 import org.apache.hadoop.ozone.container.common.utils.ReferenceCountedDB;
@@ -51,7 +52,7 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.mockito.Mockito;
-import org.rocksdb.Options;
+import org.rocksdb.ColumnFamilyOptions;
 
 import java.io.File;
 
@@ -64,11 +65,9 @@ import java.util.Map;
 import java.util.List;
 import java.util.UUID;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.ratis.util.Preconditions.assertTrue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertSame;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -83,7 +82,6 @@ public class TestKeyValueContainer {
   @Rule
   public TemporaryFolder folder = new TemporaryFolder();
 
-  private OzoneConfiguration conf;
   private String scmId = UUID.randomUUID().toString();
   private VolumeSet volumeSet;
   private RoundRobinVolumeChoosingPolicy volumeChoosingPolicy;
@@ -92,6 +90,11 @@ public class TestKeyValueContainer {
   private UUID datanodeId;
 
   private final ChunkLayOutVersion layout;
+
+  // Use one configuration object across parameterized runs of tests.
+  // This preserves the column family options in the container options
+  // cache for testContainersShareColumnFamilyOptions.
+  private static final OzoneConfiguration CONF = new OzoneConfiguration();
 
   public TestKeyValueContainer(ChunkLayOutVersion layout) {
     this.layout = layout;
@@ -104,10 +107,9 @@ public class TestKeyValueContainer {
 
   @Before
   public void setUp() throws Exception {
-    conf = new OzoneConfiguration();
     datanodeId = UUID.randomUUID();
     HddsVolume hddsVolume = new HddsVolume.Builder(folder.getRoot()
-        .getAbsolutePath()).conf(conf).datanodeUuid(datanodeId
+        .getAbsolutePath()).conf(CONF).datanodeUuid(datanodeId
         .toString()).build();
 
     volumeSet = mock(MutableVolumeSet.class);
@@ -120,39 +122,14 @@ public class TestKeyValueContainer {
         (long) StorageUnit.GB.toBytes(5), UUID.randomUUID().toString(),
         datanodeId.toString());
 
-    keyValueContainer = new KeyValueContainer(keyValueContainerData, conf);
-  }
-
-  @Test
-  public void testBlockIterator() throws Exception{
-    keyValueContainerData = new KeyValueContainerData(100L,
-        layout,
-        (long) StorageUnit.GB.toBytes(1), UUID.randomUUID().toString(),
-        datanodeId.toString());
-    keyValueContainer = new KeyValueContainer(
-        keyValueContainerData, conf);
-    keyValueContainer.create(volumeSet, volumeChoosingPolicy, scmId);
-    KeyValueBlockIterator blockIterator = keyValueContainer.blockIterator();
-    //As no blocks created, hasNext should return false.
-    assertFalse(blockIterator.hasNext());
-    int blockCount = 10;
-    addBlocks(blockCount);
-    blockIterator = keyValueContainer.blockIterator();
-    assertTrue(blockIterator.hasNext());
-    BlockData blockData;
-    int blockCounter = 0;
-    while(blockIterator.hasNext()) {
-      blockData = blockIterator.nextBlock();
-      assertEquals(blockCounter++, blockData.getBlockID().getLocalID());
-    }
-    assertEquals(blockCount, blockCounter);
+    keyValueContainer = new KeyValueContainer(keyValueContainerData, CONF);
   }
 
   private void addBlocks(int count) throws Exception {
     long containerId = keyValueContainerData.getContainerID();
 
     try(ReferenceCountedDB metadataStore = BlockUtils.getDB(keyValueContainer
-        .getContainerData(), conf)) {
+        .getContainerData(), CONF)) {
       for (int i = 0; i < count; i++) {
         // Creating BlockData
         BlockID blockID = new BlockID(containerId, i);
@@ -165,9 +142,8 @@ public class TestKeyValueContainer {
             .getLocalID(), 0), 0, 1024);
         chunkList.add(info.getProtoBufMessage());
         blockData.setChunks(chunkList);
-        metadataStore.getStore().put(Longs.toByteArray(blockID.getLocalID()),
-            blockData
-            .getProtoBufMessage().toByteArray());
+        metadataStore.getStore().getBlockDataTable()
+                .put(Long.toString(blockID.getLocalID()), blockData);
       }
     }
   }
@@ -207,21 +183,22 @@ public class TestKeyValueContainer {
     keyValueContainerData.setState(
         ContainerProtos.ContainerDataProto.State.CLOSED);
 
-    int numberOfKeysToWrite = 12;
+    long numberOfKeysToWrite = 12;
     //write one few keys to check the key count after import
     try(ReferenceCountedDB metadataStore =
-        BlockUtils.getDB(keyValueContainerData, conf)) {
-      for (int i = 0; i < numberOfKeysToWrite; i++) {
-        metadataStore.getStore().put(("test" + i).getBytes(UTF_8),
-            "test".getBytes(UTF_8));
+        BlockUtils.getDB(keyValueContainerData, CONF)) {
+      Table<String, BlockData> blockDataTable =
+              metadataStore.getStore().getBlockDataTable();
+
+      for (long i = 0; i < numberOfKeysToWrite; i++) {
+        blockDataTable.put("test" + i, new BlockData(new BlockID(i, i)));
       }
 
       // As now when we put blocks, we increment block count and update in DB.
       // As for test, we are doing manually so adding key count to DB.
-      metadataStore.getStore().put(OzoneConsts.DB_BLOCK_COUNT_KEY,
-          Longs.toByteArray(numberOfKeysToWrite));
+      metadataStore.getStore().getMetadataTable()
+              .put(OzoneConsts.BLOCK_COUNT, numberOfKeysToWrite);
     }
-    BlockUtils.removeDB(keyValueContainerData, conf);
 
     Map<String, String> metadata = new HashMap<>();
     metadata.put("key1", "value1");
@@ -247,7 +224,7 @@ public class TestKeyValueContainer {
             keyValueContainerData.getLayOutVersion(),
             keyValueContainerData.getMaxSize(), UUID.randomUUID().toString(),
             datanodeId.toString());
-    KeyValueContainer container = new KeyValueContainer(containerData, conf);
+    KeyValueContainer container = new KeyValueContainer(containerData, CONF);
 
     HddsVolume containerVolume = volumeChoosingPolicy.chooseVolume(volumeSet
         .getVolumesList(), 1);
@@ -319,7 +296,7 @@ public class TestKeyValueContainer {
     keyValueContainerData.setState(ContainerProtos.ContainerDataProto.State
         .CLOSED);
     keyValueContainer = new KeyValueContainer(
-        keyValueContainerData, conf);
+        keyValueContainerData, CONF);
     keyValueContainer.create(volumeSet, volumeChoosingPolicy, scmId);
     keyValueContainer.delete();
 
@@ -398,7 +375,7 @@ public class TestKeyValueContainer {
     try {
       keyValueContainerData.setState(
           ContainerProtos.ContainerDataProto.State.CLOSED);
-      keyValueContainer = new KeyValueContainer(keyValueContainerData, conf);
+      keyValueContainer = new KeyValueContainer(keyValueContainerData, CONF);
       keyValueContainer.create(volumeSet, volumeChoosingPolicy, scmId);
       Map<String, String> metadata = new HashMap<>();
       metadata.put(OzoneConsts.VOLUME, OzoneConsts.OZONE);
@@ -413,27 +390,30 @@ public class TestKeyValueContainer {
   }
 
   @Test
-  public void testRocksDBCreateUsesCachedOptions() throws Exception {
-    int initialSize = MetadataStoreBuilder.CACHED_OPTS.size();
+  public void testContainersShareColumnFamilyOptions() throws Exception {
+    // Get a read only view (not a copy) of the options cache.
+    Map<ConfigurationSource, ColumnFamilyOptions> cachedOptions =
+        AbstractDatanodeStore.getColumnFamilyOptionsCache();
 
     // Create Container 1
     keyValueContainer.create(volumeSet, volumeChoosingPolicy, scmId);
-    Assert.assertTrue("Rocks DB options should be cached.",
-        MetadataStoreBuilder.CACHED_OPTS.containsKey(conf));
-
-    Options opts = MetadataStoreBuilder.CACHED_OPTS.get(conf);
+    Assert.assertEquals(1, cachedOptions.size());
+    ColumnFamilyOptions options1 = cachedOptions.get(CONF);
+    Assert.assertNotNull(options1);
 
     // Create Container 2
     keyValueContainerData = new KeyValueContainerData(2L,
         layout,
         (long) StorageUnit.GB.toBytes(5), UUID.randomUUID().toString(),
         datanodeId.toString());
-
-    keyValueContainer = new KeyValueContainer(keyValueContainerData, conf);
+    keyValueContainer = new KeyValueContainer(keyValueContainerData, CONF);
     keyValueContainer.create(volumeSet, volumeChoosingPolicy, scmId);
 
-    assertEquals(initialSize + 1, MetadataStoreBuilder.CACHED_OPTS.size());
-    Options cachedOpts = MetadataStoreBuilder.CACHED_OPTS.get(conf);
-    assertSame("Cache object should not be updated.", opts, cachedOpts);
+    Assert.assertEquals(1, cachedOptions.size());
+    ColumnFamilyOptions options2 = cachedOptions.get(CONF);
+    Assert.assertNotNull(options2);
+
+    // Column family options object should be reused.
+    Assert.assertSame(options1, options2);
   }
 }
