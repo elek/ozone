@@ -54,7 +54,7 @@ public class GeneratorDatanode extends BaseGenerator {
       defaultValue = "3")
   private int datanodes;
 
-  @Option(names = {"--datanodes"},
+  @Option(names = {"--index"},
       description = "Index of the datanode. For example datanode #3 should "
           + "have only every 3rd container in a 10 node cluster.).",
       defaultValue = "1")
