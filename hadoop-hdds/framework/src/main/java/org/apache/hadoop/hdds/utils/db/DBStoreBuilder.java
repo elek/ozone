@@ -137,11 +137,6 @@ public final class DBStoreBuilder {
     setDefaultCFOptions(dbProfile.getColumnFamilyOptions());
   }
 
-  public static DBStoreBuilder newBuilder(ConfigurationSource configuration,
-      RocksDBConfiguration rocksDBConfiguration) {
-    return new DBStoreBuilder(configuration, rocksDBConfiguration);
-  }
-
   private void applyDBDefinition(DBDefinition definition) {
     // Set metadata dirs.
     File metadataDir = definition.getDBLocation(configuration);
@@ -165,7 +160,6 @@ public final class DBStoreBuilder {
       addCodec(columnFamily.getKeyType(), columnFamily.getKeyCodec());
       addCodec(columnFamily.getValueType(), columnFamily.getValueCodec());
     }
->>>>>>> origin/master
   }
 
   /**

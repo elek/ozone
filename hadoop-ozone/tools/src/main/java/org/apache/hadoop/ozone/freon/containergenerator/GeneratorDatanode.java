@@ -14,6 +14,7 @@ import org.apache.hadoop.hdds.client.BlockID;
 import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.ChecksumType;
+import org.apache.hadoop.hdds.scm.OzoneClientConfig;
 import org.apache.hadoop.hdds.scm.container.common.helpers.StorageContainerException;
 import org.apache.hadoop.hdfs.server.datanode.StorageLocation;
 import org.apache.hadoop.ozone.OzoneConsts;
@@ -37,8 +38,6 @@ import org.apache.hadoop.ozone.container.keyvalue.interfaces.ChunkManager;
 import org.apache.hadoop.ozone.freon.ContentGenerator;
 
 import com.codahale.metrics.Timer;
-import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_CLIENT_BYTES_PER_CHECKSUM_DEFAULT;
-import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_CLIENT_BYTES_PER_CHECKSUM_DEFAULT_BYTES;
 import picocli.CommandLine.Command;
 
 @Command(name = "crdn",
@@ -104,9 +103,9 @@ public class GeneratorDatanode extends BaseGenerator {
 
     volumeChoosingPolicy = new RoundRobinVolumeChoosingPolicy();
 
-    checksum = new Checksum(ChecksumType.CRC32,
-        config.getInt(OZONE_CLIENT_BYTES_PER_CHECKSUM_DEFAULT,
-            OZONE_CLIENT_BYTES_PER_CHECKSUM_DEFAULT_BYTES));
+    final OzoneClientConfig ozoneClientConfig = config.getObject(OzoneClientConfig.class);
+    checksum = new Checksum(ChecksumType.CRC32,ozoneClientConfig.getBytesPerChecksum());
+
 
     timer = getMetrics().timer("datanode-generator");
     runTests(this::generateData);
