@@ -39,6 +39,7 @@ import org.apache.hadoop.ozone.freon.ContentGenerator;
 
 import com.codahale.metrics.Timer;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
 
 @Command(name = "crdn",
     description = "Offline container metadata generator for Ozone Datanodes",
@@ -46,6 +47,18 @@ import picocli.CommandLine.Command;
     mixinStandardHelpOptions = true,
     showDefaultValues = true)
 public class GeneratorDatanode extends BaseGenerator {
+
+  @Option(names = {"--datanodes"},
+      description = "Number of datanodes (to generate only subsequent of the "
+          + "required containers).",
+      defaultValue = "3")
+  private int datanodes;
+
+  @Option(names = {"--datanodes"},
+      description = "Index of the datanode. For example datanode #3 should "
+          + "have only every 3rd container in a 10 node cluster.).",
+      defaultValue = "1")
+  private int datanodeIndex;
 
   private ChunkManager chunkManager;
 
@@ -65,10 +78,19 @@ public class GeneratorDatanode extends BaseGenerator {
   private int logCounter;
   private String datanodeId;
   private String scmId;
+  private int numberOfPipelines;
+  private int currentPipeline;
 
   @Override
   public Void call() throws Exception {
     init();
+
+    numberOfPipelines = datanodes / 3;
+
+    //generate only containers for one datanodes
+    setTestNo(getTestNo() / numberOfPipelines);
+
+    currentPipeline = (datanodeIndex - 1) % numberOfPipelines;
 
     config = createOzoneConfiguration();
 
@@ -114,7 +136,7 @@ public class GeneratorDatanode extends BaseGenerator {
 
   private void generateData(long index) throws Exception {
     timer.time((Callable<Void>) () -> {
-      long containerId = getContainerIdOffset() + index;
+      long containerId = getContainerIdOffset() + index * numberOfPipelines + currentPipeline;
 
       int keyPerContainer = getKeysPerContainer();
 

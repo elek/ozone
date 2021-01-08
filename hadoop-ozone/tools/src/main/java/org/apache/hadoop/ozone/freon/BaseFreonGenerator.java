@@ -495,4 +495,12 @@ public class BaseFreonGenerator {
       return OzoneClientFactory.getRpcClient(conf);
     }
   }
+
+  public void setTestNo(long testNo) {
+    this.testNo = testNo;
+  }
+
+  public long getTestNo() {
+    return testNo;
+  }
 }
