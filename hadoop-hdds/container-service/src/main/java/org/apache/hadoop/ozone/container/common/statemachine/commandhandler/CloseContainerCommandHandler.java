@@ -102,8 +102,6 @@ public class CloseContainerCommandHandler implements CommandHandler {
           ozoneContainer.getWriteChannel()
               .submitRequest(request, closeCommand.getPipelineID());
         } else {
-          LOG.info("mark container unhealthy: {} for container {}. container's pipeline report: {}",
-              closeCommand, ozoneContainer, ozoneContainer.getWriteChannel().getPipelineReport());
           // Container should not exist in CLOSING state without a pipeline
           controller.markContainerUnhealthy(containerId);
         }

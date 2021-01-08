@@ -175,9 +175,7 @@ public final class OmKeyLocationInfo {
     }
     if (!ignorePipeline) {
       try {
-        if (pipeline != null) {
-          builder.setPipeline(pipeline.getProtobufMessage());
-        }
+        builder.setPipeline(pipeline.getProtobufMessage());
       } catch (UnknownPipelineStateException e) {
         //TODO: fix me: we should not return KeyLocation without pipeline.
       }

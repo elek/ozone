@@ -106,7 +106,7 @@ public class BaseFreonGenerator {
           + " a prefix of the generated object names. If empty, a random name"
           + " will be generated",
       defaultValue = "")
-  private static String prefix = "";
+  private String prefix = "";
 
   private MetricRegistry metrics = new MetricRegistry();
 
@@ -446,7 +446,7 @@ public class BaseFreonGenerator {
     return dig.digest(stream);
   }
 
-  public static String getPrefix() {
+  public String getPrefix() {
     return prefix;
   }
 
@@ -472,6 +472,10 @@ public class BaseFreonGenerator {
 
   public int getThreadNo() {
     return threadNo;
+  }
+
+  public void setThreadNo(int threadNo) {
+    this.threadNo = threadNo;
   }
 
   protected OzoneClient createOzoneClient(String omServiceID,

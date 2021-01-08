@@ -18,19 +18,20 @@
 
 package org.apache.hadoop.ozone.container.common.utils;
 
-import com.google.common.annotations.VisibleForTesting;
-import org.apache.commons.lang3.StringUtils;
+import java.io.File;
+import java.io.IOException;
+import java.util.Properties;
+import java.util.UUID;
+
 import org.apache.hadoop.ozone.OzoneConsts;
 import org.apache.hadoop.ozone.common.InconsistentStorageStateException;
 import org.apache.hadoop.ozone.container.common.DataNodeLayoutVersion;
 import org.apache.hadoop.ozone.container.common.volume.HddsVolume;
 import org.apache.hadoop.util.Time;
-import org.slf4j.Logger;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.Properties;
-import java.util.UUID;
+import com.google.common.annotations.VisibleForTesting;
+import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
 
 /**
  * A util class for {@link HddsVolume}.
@@ -152,8 +153,10 @@ public final class HddsVolumeUtil {
     return lv;
   }
 
-  private static String getProperty(Properties props, String propName, File
-      versionFile)
+  public static String getProperty(
+      Properties props, String propName, File
+      versionFile
+  )
       throws InconsistentStorageStateException {
     String value = props.getProperty(propName);
     if (StringUtils.isBlank(value)) {

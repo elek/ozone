@@ -957,7 +957,6 @@ public class KeyValueHandler extends Handler {
       if (container.getContainerState() != State.UNHEALTHY) {
         try {
           container.markContainerUnhealthy();
-          LOG.info("mark unhealthy", new IOException());
         } catch (IOException ex) {
           // explicitly catch IOException here since the this operation
           // will fail if the Rocksdb metadata is corrupted.

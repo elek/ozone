@@ -127,7 +127,6 @@ public class ContainerSet {
       if (c.getContainerData().getVolume().isFailed()) {
         try {
           c.markContainerUnhealthy();
-          LOG.info("mark unhealthy", new IOException());
         } catch (StorageContainerException e) {
           LOG.error("Failed to move container {} to UNHEALTHY state in "
                   + "volume {}", c.getContainerData().getContainerID(),
@@ -283,7 +282,6 @@ public class ContainerSet {
           // unhealthy containers would be detected
           try {
             container.markContainerUnhealthy();
-            LOG.info("mark unhealthy", new IOException());
           } catch (StorageContainerException sce) {
             // The container will still be marked unhealthy in memory even if
             // exception occurs. It won't accept any new transactions and will

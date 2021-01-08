@@ -32,7 +32,6 @@ import java.util.Set;
 import org.apache.hadoop.hdds.HddsConfigKeys;
 import org.apache.hadoop.hdds.StringUtils;
 import org.apache.hadoop.hdds.conf.ConfigurationSource;
-import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 
 import com.google.common.base.Preconditions;
 import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_DB_PROFILE;
@@ -101,7 +100,7 @@ public final class DBStoreBuilder {
     return new DBStoreBuilder(configuration);
   }
 
-  public static DBStoreBuilder newBuilder(OzoneConfiguration configuration,
+  public static DBStoreBuilder newBuilder(ConfigurationSource configuration,
       RocksDBConfiguration rocksDBConfiguration) {
     return new DBStoreBuilder(configuration, rocksDBConfiguration);
   }

@@ -35,7 +35,6 @@ import org.apache.hadoop.hdds.server.events.EventHandler;
 import org.apache.hadoop.hdds.server.events.EventPublisher;
 import org.apache.hadoop.ozone.protocol.commands.CommandForDatanode;
 import org.apache.hadoop.ozone.protocol.commands.DeleteContainerCommand;
-import org.apache.hadoop.util.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -115,15 +114,6 @@ public class ContainerReportHandler extends AbstractContainerReportHandler
     final ContainerReportsProto containerReport =
         reportFromDatanode.getReport();
 
-    if (LOG.isTraceEnabled()) {
-      LOG.debug("Processing container report from [datanode={}]: {}",
-          datanodeDetails.getUuid(),
-          containerReport.toString().replaceAll("\n", "\\\\n"));
-    } else if (LOG.isDebugEnabled()) {
-      LOG.debug("Processing container report from {}",
-          datanodeDetails.getUuid());
-    }
-
     try {
       final List<ContainerReplicaProto> replicas =
           containerReport.getReportsList();
@@ -167,8 +157,6 @@ public class ContainerReportHandler extends AbstractContainerReportHandler
   private void processContainerReplicas(final DatanodeDetails datanodeDetails,
       final List<ContainerReplicaProto> replicas,
       final EventPublisher publisher) {
-    final long startTime = Time.monotonicNow();
-
     for (ContainerReplicaProto replicaProto : replicas) {
       try {
         processContainerReplica(datanodeDetails, replicaProto);
@@ -196,9 +184,6 @@ public class ContainerReportHandler extends AbstractContainerReportHandler
             datanodeDetails, e);
       }
     }
-    long endTime = Time.monotonicNow();
-    LOG.info("Took {}ms to process container report from DN {} which has {} container replicas" ,
-        endTime - startTime, datanodeDetails, replicas.size());
   }
 
   /**
