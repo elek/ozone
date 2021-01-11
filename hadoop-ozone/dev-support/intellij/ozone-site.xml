@@ -36,12 +36,8 @@
     <value>localhost</value>
   </property>
   <property>
-    <name>hdds.datanode.dirs</name>
-    <value>/home/elek/tmp/datanode1/storage</value>
-  </property>
-  <property>
     <name>ozone.metadata.dirs</name>
-    <value>/home/elek/tmp/datanode1/metadata</value>
+    <value>/tmp/metadata</value>
   </property>
   <property>
     <name>ozone.scm.names</name>

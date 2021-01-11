@@ -7,12 +7,14 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.Properties;
+import java.util.Random;
 import java.util.concurrent.Callable;
 
 import org.apache.hadoop.hdds.cli.HddsVersionProvider;
 import org.apache.hadoop.hdds.client.BlockID;
 import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos;
+import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.ChecksumData;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.ChecksumType;
 import org.apache.hadoop.hdds.scm.OzoneClientConfig;
 import org.apache.hadoop.hdds.scm.container.common.helpers.StorageContainerException;
@@ -60,6 +62,11 @@ public class GeneratorDatanode extends BaseGenerator {
       defaultValue = "1")
   private int datanodeIndex;
 
+  @Option(names = {"--zero"},
+      description = "User zero bytes instead of random data.",
+      defaultValue = "1")
+  private boolean zero;
+
   private ChunkManager chunkManager;
 
   private RoundRobinVolumeChoosingPolicy volumeChoosingPolicy;
@@ -73,6 +80,8 @@ public class GeneratorDatanode extends BaseGenerator {
   private Timer timer;
 
   private ContentGenerator contentGenerator;
+
+  private Random random = new Random();
 
   //Simulate ratis log index (incremented for each chunk write)
   private int logCounter;
@@ -125,9 +134,10 @@ public class GeneratorDatanode extends BaseGenerator {
 
     volumeChoosingPolicy = new RoundRobinVolumeChoosingPolicy();
 
-    final OzoneClientConfig ozoneClientConfig = config.getObject(OzoneClientConfig.class);
-    checksum = new Checksum(ChecksumType.CRC32,ozoneClientConfig.getBytesPerChecksum());
-
+    final OzoneClientConfig ozoneClientConfig =
+        config.getObject(OzoneClientConfig.class);
+    checksum = new Checksum(ChecksumType.CRC32,
+        ozoneClientConfig.getBytesPerChecksum());
 
     timer = getMetrics().timer("datanode-generator");
     runTests(this::generateData);
@@ -136,7 +146,8 @@ public class GeneratorDatanode extends BaseGenerator {
 
   private void generateData(long index) throws Exception {
     timer.time((Callable<Void>) () -> {
-      long containerId = getContainerIdOffset() + index * numberOfPipelines + currentPipeline;
+      long containerId =
+          getContainerIdOffset() + index * numberOfPipelines + currentPipeline;
 
       int keyPerContainer = getKeysPerContainer();
 
@@ -158,7 +169,16 @@ public class GeneratorDatanode extends BaseGenerator {
               Math.min(getKeySize() - writtenBytes, chunkSize);
           String chunkName = "chunk" + chunkIndex++;
 
-          ByteBuffer byteBuffer = ByteBuffer.wrap(new byte[currentChunkSize]);
+          final byte[] data = new byte[currentChunkSize];
+          if (!zero) {
+            random.nextBytes(data);
+          }
+          
+          ByteBuffer byteBuffer = ByteBuffer.wrap(data);
+
+          //it should be done BEFORE writeChunk consumes the buffer
+          final ChecksumData checksumData =
+              this.checksum.computeChecksum(byteBuffer).getProtoBufMessage();
 
           ChunkInfo chunkInfo =
               new ChunkInfo(chunkName, writtenBytes, currentChunkSize);
@@ -169,8 +189,7 @@ public class GeneratorDatanode extends BaseGenerator {
               .setChunkName(chunkInfo.getChunkName())
               .setLen(chunkInfo.getLen())
               .setOffset(chunkInfo.getOffset())
-              .setChecksumData(
-                  checksum.computeChecksum(byteBuffer).getProtoBufMessage())
+              .setChecksumData(checksumData)
               .build());
 
           writtenBytes += currentChunkSize;
