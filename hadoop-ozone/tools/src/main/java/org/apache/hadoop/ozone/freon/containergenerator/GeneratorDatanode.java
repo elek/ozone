@@ -64,7 +64,7 @@ public class GeneratorDatanode extends BaseGenerator {
 
   @Option(names = {"--zero"},
       description = "User zero bytes instead of random data.",
-      defaultValue = "1")
+      defaultValue = "false")
   private boolean zero;
 
   private ChunkManager chunkManager;
@@ -173,7 +173,7 @@ public class GeneratorDatanode extends BaseGenerator {
           if (!zero) {
             random.nextBytes(data);
           }
-          
+
           ByteBuffer byteBuffer = ByteBuffer.wrap(data);
 
           //it should be done BEFORE writeChunk consumes the buffer
