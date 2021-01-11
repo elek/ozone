@@ -7,7 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.Properties;
-import java.util.Random;
+import java.util.SplittableRandom;
 import java.util.concurrent.Callable;
 
 import org.apache.hadoop.hdds.cli.HddsVersionProvider;
@@ -15,7 +15,6 @@ import org.apache.hadoop.hdds.client.BlockID;
 import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.ChecksumData;
-import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.ChecksumType;
 import org.apache.hadoop.hdds.scm.OzoneClientConfig;
 import org.apache.hadoop.hdds.scm.container.common.helpers.StorageContainerException;
 import org.apache.hadoop.hdfs.server.datanode.StorageLocation;
@@ -81,8 +80,6 @@ public class GeneratorDatanode extends BaseGenerator {
 
   private ContentGenerator contentGenerator;
 
-  private Random random = new Random();
-
   //Simulate ratis log index (incremented for each chunk write)
   private int logCounter;
   private String datanodeId;
@@ -136,7 +133,7 @@ public class GeneratorDatanode extends BaseGenerator {
 
     final OzoneClientConfig ozoneClientConfig =
         config.getObject(OzoneClientConfig.class);
-    checksum = new Checksum(ChecksumType.CRC32,
+    checksum = new Checksum(ozoneClientConfig.getChecksumType(),
         ozoneClientConfig.getBytesPerChecksum());
 
     timer = getMetrics().timer("datanode-generator");
@@ -145,9 +142,13 @@ public class GeneratorDatanode extends BaseGenerator {
   }
 
   private void generateData(long index) throws Exception {
+
     timer.time((Callable<Void>) () -> {
+
       long containerId =
           getContainerIdOffset() + index * numberOfPipelines + currentPipeline;
+
+      SplittableRandom random = new SplittableRandom(containerId);
 
       int keyPerContainer = getKeysPerContainer();
 
@@ -171,7 +172,7 @@ public class GeneratorDatanode extends BaseGenerator {
 
           final byte[] data = new byte[currentChunkSize];
           if (!zero) {
-            random.nextBytes(data);
+            generatedRandomData(random, data);
           }
 
           ByteBuffer byteBuffer = ByteBuffer.wrap(data);
@@ -201,6 +202,24 @@ public class GeneratorDatanode extends BaseGenerator {
       return null;
     });
 
+  }
+
+  private void generatedRandomData(SplittableRandom random, byte[] data) {
+    int bit = 0;
+    int writtenBytes = 0;
+    long currentNumber = 0;
+
+    //this section generates one 4 bit long random number and reuse it 4 times
+    while (writtenBytes < data.length) {
+      if (bit == 0) {
+        currentNumber = random.nextLong();
+        bit = 3;
+      } else {
+        bit--;
+      }
+      data[writtenBytes++] = (byte) currentNumber;
+      currentNumber = currentNumber >> 8;
+    }
   }
 
   private KeyValueContainer createContainer(long containerId)
