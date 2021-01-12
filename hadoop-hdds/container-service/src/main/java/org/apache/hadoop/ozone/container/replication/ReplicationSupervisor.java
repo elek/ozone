@@ -117,10 +117,10 @@ public class ReplicationSupervisor {
     return containersInFlight.size();
   }
 
-  private final class TaskRunner implements Runnable {
+  public final class TaskRunner implements Runnable {
     private final ReplicationTask task;
 
-    private TaskRunner(ReplicationTask task) {
+    public TaskRunner(ReplicationTask task) {
       this.task = task;
     }
 
