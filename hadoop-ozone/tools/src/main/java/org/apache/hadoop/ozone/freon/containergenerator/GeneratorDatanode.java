@@ -199,6 +199,9 @@ public class GeneratorDatanode extends BaseGenerator {
         BlockManagerImpl.persistPutBlock(container, blockData, config, true);
 
       }
+
+      container.close();
+
       return null;
     });
 
