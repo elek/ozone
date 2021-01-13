@@ -25,7 +25,6 @@ import java.io.IOException;
 import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos;
 import org.apache.hadoop.hdds.scm.container.common.helpers.StorageContainerException;
-import com.google.common.base.Preconditions;
 import org.apache.hadoop.ozone.common.Storage;
 import org.apache.hadoop.ozone.container.common.helpers.ContainerUtils;
 import org.apache.hadoop.ozone.container.common.impl.ContainerData;
@@ -35,8 +34,9 @@ import org.apache.hadoop.ozone.container.common.volume.HddsVolume;
 import org.apache.hadoop.ozone.container.common.volume.MutableVolumeSet;
 import org.apache.hadoop.ozone.container.keyvalue.KeyValueContainer;
 import org.apache.hadoop.ozone.container.keyvalue.KeyValueContainerData;
-
 import org.apache.hadoop.ozone.container.keyvalue.helpers.KeyValueContainerUtil;
+
+import com.google.common.base.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,8 +75,10 @@ public class ContainerReader implements Runnable {
   private final File hddsVolumeDir;
   private final MutableVolumeSet volumeSet;
 
-  ContainerReader(MutableVolumeSet volSet, HddsVolume volume, ContainerSet cset,
-      ConfigurationSource conf) {
+  public ContainerReader(
+      MutableVolumeSet volSet, HddsVolume volume, ContainerSet cset,
+      ConfigurationSource conf
+  ) {
     Preconditions.checkNotNull(volume);
     this.hddsVolume = volume;
     this.hddsVolumeDir = hddsVolume.getHddsRootDir();
