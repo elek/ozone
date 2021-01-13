@@ -116,13 +116,18 @@ public class ExportContainer implements SubcommandWithParent, Callable<Void> {
       reader.run();
     }
 
-    LOG.info("All the container metadata is loaded");
+    LOG.info("All the container metadata is loaded. Starting to replication");
 
     replicationSource.prepare(containerId);
-    try (FileOutputStream fos = new FileOutputStream(
-        new File(destination, "container-" + containerId + ".tar.gz"))) {
+    LOG.info("Preparation is done");
+
+    final File destinationFile =
+        new File(destination, "container-" + containerId + ".tar.gz");
+    try (FileOutputStream fos = new FileOutputStream(destinationFile)) {
       replicationSource.copyData(containerId, fos);
     }
+    LOG.info("Container is exported to {}", destinationFile);
+
     return null;
   }
 
