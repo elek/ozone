@@ -74,39 +74,32 @@ public class TarContainerPacker
     Path dbRoot = containerData.getDbFile().toPath();
     Path chunksRoot = Paths.get(containerData.getChunksPath());
 
-    try (InputStream decompressed = decompress(input);
-         ArchiveInputStream archiveInput = untar(decompressed)) {
+    ArchiveInputStream archiveInput = untar(input);
 
-      ArchiveEntry entry = archiveInput.getNextEntry();
-      while (entry != null) {
-        String name = entry.getName();
-        long size = entry.getSize();
-        if (name.startsWith(DB_DIR_NAME + "/")) {
-          Path destinationPath = dbRoot
-              .resolve(name.substring(DB_DIR_NAME.length() + 1));
-          extractEntry(archiveInput, size, dbRoot, destinationPath);
-        } else if (name.startsWith(CHUNKS_DIR_NAME + "/")) {
+    ArchiveEntry entry = archiveInput.getNextEntry();
+    while (entry != null) {
+      String name = entry.getName();
+      long size = entry.getSize();
+      if (name.startsWith(DB_DIR_NAME + "/")) {
+        Path destinationPath = dbRoot
+            .resolve(name.substring(DB_DIR_NAME.length() + 1));
+        extractEntry(archiveInput, size, dbRoot, destinationPath);
+      } else if (name.startsWith(CHUNKS_DIR_NAME + "/")) {
           Path destinationPath = chunksRoot
               .resolve(name.substring(CHUNKS_DIR_NAME.length() + 1));
           extractEntry(archiveInput, size, chunksRoot, destinationPath);
         } else if (CONTAINER_FILE_NAME.equals(name)) {
-          //Don't do anything. Container file should be unpacked in a
-          //separated step by unpackContainerDescriptor call.
-          descriptorFileContent = readEntry(archiveInput, size);
-        } else {
-          throw new IllegalArgumentException(
-              "Unknown entry in the tar file: " + "" + name);
-        }
-        entry = archiveInput.getNextEntry();
+        //Don't do anything. Container file should be unpacked in a
+        //separated step by unpackContainerDescriptor call.
+        descriptorFileContent = readEntry(archiveInput, size);
+      } else {
+        throw new IllegalArgumentException(
+            "Unknown entry in the tar file: " + "" + name);
       }
-      return descriptorFileContent;
-
-    } catch (CompressorException e) {
-      throw new IOException(
-          "Can't uncompress the given container: " + container
-              .getContainerData().getContainerID(),
-          e);
+      entry = archiveInput.getNextEntry();
     }
+    return descriptorFileContent;
+
   }
 
   private void extractEntry(InputStream input, long size,
@@ -149,8 +142,7 @@ public class TarContainerPacker
 
     KeyValueContainerData containerData = container.getContainerData();
 
-    try (OutputStream compressed = compress(output);
-         ArchiveOutputStream archiveOutput = tar(compressed)) {
+    try (ArchiveOutputStream archiveOutput = tar(output)) {
 
       includePath(containerData.getDbFile().toPath(), DB_DIR_NAME,
           archiveOutput);
@@ -160,18 +152,14 @@ public class TarContainerPacker
 
       includeFile(container.getContainerFile(), CONTAINER_FILE_NAME,
           archiveOutput);
-    } catch (CompressorException e) {
-      throw new IOException(
-          "Can't compress the container: " + containerData.getContainerID(),
-          e);
     }
+
   }
 
   @Override
   public byte[] unpackContainerDescriptor(InputStream input)
       throws IOException {
-    try (InputStream decompressed = decompress(input);
-         ArchiveInputStream archiveInput = untar(decompressed)) {
+    try (ArchiveInputStream archiveInput = untar(input)) {
 
       ArchiveEntry entry = archiveInput.getNextEntry();
       while (entry != null) {
@@ -181,12 +169,7 @@ public class TarContainerPacker
         }
         entry = archiveInput.getNextEntry();
       }
-    } catch (CompressorException e) {
-      throw new IOException(
-          "Can't read the container descriptor from the container archive",
-          e);
     }
-
     throw new IOException(
         "Container descriptor is missing from the container archive.");
   }
