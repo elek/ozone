@@ -74,32 +74,32 @@ public class TarContainerPacker
     Path dbRoot = containerData.getDbFile().toPath();
     Path chunksRoot = Paths.get(containerData.getChunksPath());
 
-    ArchiveInputStream archiveInput = untar(input);
+    try (ArchiveInputStream archiveInput = untar(input)) {
 
-    ArchiveEntry entry = archiveInput.getNextEntry();
-    while (entry != null) {
-      String name = entry.getName();
-      long size = entry.getSize();
-      if (name.startsWith(DB_DIR_NAME + "/")) {
-        Path destinationPath = dbRoot
-            .resolve(name.substring(DB_DIR_NAME.length() + 1));
-        extractEntry(archiveInput, size, dbRoot, destinationPath);
-      } else if (name.startsWith(CHUNKS_DIR_NAME + "/")) {
+      ArchiveEntry entry = archiveInput.getNextEntry();
+      while (entry != null) {
+        String name = entry.getName();
+        long size = entry.getSize();
+        if (name.startsWith(DB_DIR_NAME + "/")) {
+          Path destinationPath = dbRoot
+              .resolve(name.substring(DB_DIR_NAME.length() + 1));
+          extractEntry(archiveInput, size, dbRoot, destinationPath);
+        } else if (name.startsWith(CHUNKS_DIR_NAME + "/")) {
           Path destinationPath = chunksRoot
               .resolve(name.substring(CHUNKS_DIR_NAME.length() + 1));
           extractEntry(archiveInput, size, chunksRoot, destinationPath);
         } else if (CONTAINER_FILE_NAME.equals(name)) {
-        //Don't do anything. Container file should be unpacked in a
-        //separated step by unpackContainerDescriptor call.
-        descriptorFileContent = readEntry(archiveInput, size);
-      } else {
-        throw new IllegalArgumentException(
-            "Unknown entry in the tar file: " + "" + name);
+          //Don't do anything. Container file should be unpacked in a
+          //separated step by unpackContainerDescriptor call.
+          descriptorFileContent = readEntry(archiveInput, size);
+        } else {
+          throw new IllegalArgumentException(
+              "Unknown entry in the tar file: " + "" + name);
+        }
+        entry = archiveInput.getNextEntry();
       }
-      entry = archiveInput.getNextEntry();
+      return descriptorFileContent;
     }
-    return descriptorFileContent;
-
   }
 
   private void extractEntry(InputStream input, long size,
