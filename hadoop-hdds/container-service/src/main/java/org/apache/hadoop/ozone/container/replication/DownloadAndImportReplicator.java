@@ -114,12 +114,8 @@ public class DownloadAndImportReplicator implements ContainerReplicator {
       //wait for the download. This thread pool is limiting the paralell
       //downloads, so it's ok to block here and wait for the full download.
       Path path = tempTarFile.get();
-      long bytes = Files.size(path);
-
-      LOG.info("Container {} is downloaded with size {}, starting to import.",
-          containerID, bytes);
-      task.setTransferredBytes(bytes);
-
+      LOG.info("Container {} is downloaded, starting to import.",
+          containerID);
       importContainer(containerID, path);
       LOG.info("Container {} is replicated successfully", containerID);
       task.setStatus(Status.DONE);
