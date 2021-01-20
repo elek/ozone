@@ -385,6 +385,7 @@ enum ChecksumType {
     CRC32C = 3;
     SHA256 = 4;
     MD5 = 5;
+    CRC32CJ9 = 6;
 }
 
 message  WriteChunkRequestProto  {
