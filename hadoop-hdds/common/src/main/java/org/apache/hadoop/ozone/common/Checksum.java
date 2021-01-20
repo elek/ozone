@@ -77,6 +77,7 @@ public class Checksum {
     NONE(() -> data -> ByteString.EMPTY),
     CRC32(() -> newChecksumByteBufferFunction(PureJavaCrc32ByteBuffer::new)),
     CRC32C(() -> newChecksumByteBufferFunction(PureJavaCrc32CByteBuffer::new)),
+    CRC32CJ9(() -> newChecksumByteBufferFunction(JDK9Crc32CByteBuffer::new)),
     SHA256(() -> newMessageDigestFunction("SHA-256")),
     MD5(() -> newMessageDigestFunction("MD5"));
 
