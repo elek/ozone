@@ -18,6 +18,7 @@
 
 package org.apache.hadoop.ozone.container.replication;
 
+import javax.annotation.Nonnull;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
@@ -29,14 +30,17 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
+import org.apache.hadoop.hdds.conf.InMemoryConfiguration;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.ozone.container.common.impl.ChunkLayOutVersion;
 import org.apache.hadoop.ozone.container.common.impl.ContainerSet;
 import org.apache.hadoop.ozone.container.keyvalue.ChunkLayoutTestInfo;
 import org.apache.hadoop.ozone.container.keyvalue.KeyValueContainer;
 import org.apache.hadoop.ozone.container.keyvalue.KeyValueContainerData;
-
 import org.apache.hadoop.test.GenericTestUtils;
+
+import static com.google.common.util.concurrent.MoreExecutors.newDirectExecutorService;
+import static java.util.Collections.emptyList;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -44,11 +48,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.mockito.Mockito;
-
-import javax.annotation.Nonnull;
-
-import static com.google.common.util.concurrent.MoreExecutors.newDirectExecutorService;
-import static java.util.Collections.emptyList;
 
 /**
  * Test the replication supervisor.
@@ -189,12 +188,10 @@ public class TestReplicationSupervisor {
         Mockito.mock(SimpleContainerDownloader.class);
     CompletableFuture<Path> res = new CompletableFuture<>();
     res.complete(Paths.get("file:/tmp/no-such-file"));
-    Mockito.when(
-        moc.getContainerDataFromReplicas(Mockito.anyLong(), Mockito.anyList()))
-        .thenReturn(res);
 
     ContainerReplicator replicatorFactory =
-        new DownloadAndImportReplicator(set, null, moc, null);
+        new DownloadAndImportReplicator(new InMemoryConfiguration(),
+            () -> "", set, moc, null);
 
     replicatorRef.set(replicatorFactory);
 

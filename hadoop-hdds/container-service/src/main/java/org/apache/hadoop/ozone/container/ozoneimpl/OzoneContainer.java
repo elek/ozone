@@ -347,4 +347,8 @@ public class OzoneContainer {
   public MutableVolumeSet getVolumeSet() {
     return volumeSet;
   }
+
+  public String getScmId() {
+    return hddsDispatcher.getScmId();
+  }
 }

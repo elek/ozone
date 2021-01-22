@@ -19,6 +19,8 @@
 package org.apache.hadoop.ozone.container.replication;
 
 import java.io.IOException;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.cert.X509Certificate;
@@ -32,6 +34,9 @@ import org.apache.hadoop.hdds.protocol.DatanodeDetails;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails.Port.Name;
 import org.apache.hadoop.hdds.security.x509.SecurityConfig;
 import org.apache.hadoop.ozone.OzoneConfigKeys;
+import org.apache.hadoop.ozone.container.common.impl.ContainerDataYaml;
+import org.apache.hadoop.ozone.container.keyvalue.KeyValueContainerData;
+import org.apache.hadoop.ozone.container.keyvalue.TarContainerPacker;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.jetbrains.annotations.NotNull;
@@ -53,6 +58,7 @@ public class SimpleContainerDownloader implements ContainerDownloader {
   private final Path workingDirectory;
   private final SecurityConfig securityConfig;
   private final X509Certificate caCert;
+  private TarContainerPacker packer = new TarContainerPacker();
 
   public SimpleContainerDownloader(
       ConfigurationSource conf,
@@ -73,40 +79,27 @@ public class SimpleContainerDownloader implements ContainerDownloader {
   }
 
   @Override
-  public CompletableFuture<Path> getContainerDataFromReplicas(
-      long containerId,
+  public KeyValueContainerData getContainerDataFromReplicas(
+      KeyValueContainerData containerData,
       List<DatanodeDetails> sourceDatanodes
   ) {
-
-    CompletableFuture<Path> result = null;
 
     final List<DatanodeDetails> shuffledDatanodes =
         shuffleDatanodes(sourceDatanodes);
 
     for (DatanodeDetails datanode : shuffledDatanodes) {
       try {
-        if (result == null) {
-          result = downloadContainer(containerId, datanode);
-        } else {
-
-          result = result.exceptionally(t -> {
-            LOG.error("Error on replicating container: " + containerId, t);
-            try {
-              return downloadContainer(containerId, datanode).join();
-            } catch (Exception e) {
-              LOG.error("Error on replicating container: " + containerId,
-                  e);
-              return null;
-            }
-          });
-        }
+        return downloadContainer(containerData, datanode);
       } catch (Exception ex) {
         LOG.error(String.format(
             "Container %s download from datanode %s was unsuccessful. "
-                + "Trying the next datanode", containerId, datanode), ex);
+                + "Trying the next datanode", containerData.getContainerID(),
+            datanode), ex);
       }
     }
-    return result;
+    throw new RuntimeException(
+        "Couldn't download container from any of the datanodes " + containerData
+            .getContainerID());
 
   }
 
@@ -127,8 +120,8 @@ public class SimpleContainerDownloader implements ContainerDownloader {
   }
 
   @VisibleForTesting
-  protected CompletableFuture<Path> downloadContainer(
-      long containerId,
+  protected KeyValueContainerData downloadContainer(
+      KeyValueContainerData containerData,
       DatanodeDetails datanode
   ) throws IOException {
     CompletableFuture<Path> result;
@@ -136,17 +129,30 @@ public class SimpleContainerDownloader implements ContainerDownloader {
         new GrpcReplicationClient(datanode.getIpAddress(),
             datanode.getPort(Name.REPLICATION).getValue(),
             workingDirectory, securityConfig, caCert);
-    result = grpcReplicationClient.download(containerId)
-        .thenApply(r -> {
-          try {
-            grpcReplicationClient.close();
-          } catch (Exception e) {
-            LOG.error("Couldn't close Grpc replication client", e);
-          }
-          return r;
-        });
 
-    return result;
+    PipedOutputStream outputStream = new PipedOutputStream();
+
+    grpcReplicationClient.download(containerData, outputStream);
+    final byte[] descriptor = packer
+        .unpackContainerData(containerData, new PipedInputStream(outputStream));
+
+    //parse descriptor
+    //now, we have extracted the container descriptor from the previous
+    //datanode. We can load it and upload it with the current data
+    // (original metadata + current filepath fields)
+    KeyValueContainerData originalContainerData =
+        (KeyValueContainerData) ContainerDataYaml
+            .readContainer(descriptor);
+
+    containerData.setState(originalContainerData.getState());
+    containerData
+        .setContainerDBType(originalContainerData.getContainerDBType());
+    containerData.setSchemaVersion(originalContainerData.getSchemaVersion());
+    containerData.setLayoutVersion(
+        originalContainerData.getLayOutVersion().getVersion());
+
+    //update descriptor
+    return containerData;
   }
 
   @Override

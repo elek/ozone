@@ -22,13 +22,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import org.apache.hadoop.ozone.container.common.impl.ContainerData;
+import org.apache.hadoop.ozone.container.keyvalue.KeyValueContainerData;
 
 /**
  * Service to pack/unpack ContainerData container data to/from a single byte
  * stream.
  */
-public interface ContainerPacker<CONTAINERDATA extends ContainerData> {
+public interface ContainerPacker {
 
   /**
    * Extract the container data to the path defined by the container.
@@ -38,7 +38,8 @@ public interface ContainerPacker<CONTAINERDATA extends ContainerData> {
    * @return the byte content of the descriptor (which won't be written to a
    * file but returned).
    */
-  byte[] unpackContainerData(Container<CONTAINERDATA> container,
+  byte[] unpackContainerData(
+      KeyValueContainerData container,
       InputStream inputStream)
       throws IOException;
 
@@ -46,7 +47,7 @@ public interface ContainerPacker<CONTAINERDATA extends ContainerData> {
    * Compress all the container data (chunk data, metadata db AND container
    * descriptor) to one single archive.
    */
-  void pack(Container<CONTAINERDATA> container, OutputStream destination)
+  void pack(KeyValueContainerData containerData, OutputStream destination)
       throws IOException;
 
   /**

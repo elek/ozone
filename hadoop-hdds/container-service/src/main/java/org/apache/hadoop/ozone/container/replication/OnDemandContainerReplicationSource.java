@@ -20,11 +20,11 @@ package org.apache.hadoop.ozone.container.replication;
 import java.io.IOException;
 import java.io.OutputStream;
 
-import org.apache.hadoop.ozone.container.common.interfaces.Container;
+import org.apache.hadoop.ozone.container.keyvalue.KeyValueContainer;
 import org.apache.hadoop.ozone.container.keyvalue.TarContainerPacker;
+import org.apache.hadoop.ozone.container.ozoneimpl.ContainerController;
 
 import com.google.common.base.Preconditions;
-import org.apache.hadoop.ozone.container.ozoneimpl.ContainerController;
 
 /**
  * A naive implementation of the replication source which creates a tar file
@@ -51,13 +51,13 @@ public class OnDemandContainerReplicationSource
   public void copyData(long containerId, OutputStream destination)
       throws IOException {
 
-    Container container = controller.getContainer(containerId);
+    KeyValueContainer container =
+        (KeyValueContainer) controller.getContainer(containerId);
 
     Preconditions.checkNotNull(
         container, "Container is not found " + containerId);
 
-    controller.exportContainer(
-        container.getContainerType(), containerId, destination, packer);
+    container.exportContainerData(destination, packer);
 
   }
 }

@@ -44,7 +44,6 @@ import org.apache.hadoop.ozone.container.common.statemachine.commandhandler.Dele
 import org.apache.hadoop.ozone.container.common.statemachine.commandhandler.DeleteContainerCommandHandler;
 import org.apache.hadoop.ozone.container.common.statemachine.commandhandler.ReplicateContainerCommandHandler;
 import org.apache.hadoop.ozone.container.common.statemachine.commandhandler.SetNodeOperationalStateCommandHandler;
-import org.apache.hadoop.ozone.container.keyvalue.TarContainerPacker;
 import org.apache.hadoop.ozone.container.ozoneimpl.OzoneContainer;
 import org.apache.hadoop.ozone.container.replication.ContainerReplicator;
 import org.apache.hadoop.ozone.container.replication.DownloadAndImportReplicator;
@@ -126,11 +125,12 @@ public class DatanodeStateMachine implements Closeable {
     nextHB = new AtomicLong(Time.monotonicNow());
 
     ContainerReplicator replicator =
-        new DownloadAndImportReplicator(container.getContainerSet(),
-            container.getController(),
+        new DownloadAndImportReplicator(conf,
+            () -> container.getScmId(),
+            container.getContainerSet(),
             new SimpleContainerDownloader(conf,
                 dnCertClient != null ? dnCertClient.getCACertificate() : null),
-            new TarContainerPacker());
+            container.getVolumeSet());
 
     supervisor =
         new ReplicationSupervisor(container.getContainerSet(), replicator,
