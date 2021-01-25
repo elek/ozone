@@ -36,7 +36,6 @@ import org.apache.hadoop.ozone.container.common.utils.ReferenceCountedDB;
 import org.apache.hadoop.ozone.container.common.volume.HddsVolume;
 import org.apache.hadoop.ozone.container.keyvalue.helpers.KeyValueContainerLocationUtil;
 
-import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import static java.lang.Math.max;
 import static org.apache.hadoop.ozone.OzoneConsts.BLOCK_COUNT;
@@ -114,13 +113,6 @@ public class KeyValueContainerData extends ContainerData {
     this.deleteTransactionId = 0;
   }
 
-  public KeyValueContainerData(ContainerData source) {
-    super(source);
-    Preconditions.checkArgument(source.getContainerType()
-        == ContainerProtos.ContainerType.KeyValueContainer);
-    this.numPendingDeletionBlocks = new AtomicLong(0);
-    this.deleteTransactionId = 0;
-  }
 
   /**
    * @param version The schema version indicating the table layout of the

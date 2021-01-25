@@ -121,7 +121,7 @@ public class SimpleContainerDownloader implements ContainerDownloader {
 
   @VisibleForTesting
   protected KeyValueContainerData downloadContainer(
-      KeyValueContainerData containerData,
+      KeyValueContainerData preCreated,
       DatanodeDetails datanode
   ) throws IOException {
     CompletableFuture<Path> result;
@@ -132,27 +132,42 @@ public class SimpleContainerDownloader implements ContainerDownloader {
 
     PipedOutputStream outputStream = new PipedOutputStream();
 
-    grpcReplicationClient.download(containerData, outputStream);
+    grpcReplicationClient.download(preCreated, outputStream);
     final byte[] descriptor = packer
-        .unpackContainerData(containerData, new PipedInputStream(outputStream));
+        .unpackContainerData(preCreated, new PipedInputStream(outputStream));
 
     //parse descriptor
     //now, we have extracted the container descriptor from the previous
     //datanode. We can load it and upload it with the current data
     // (original metadata + current filepath fields)
-    KeyValueContainerData originalContainerData =
+    KeyValueContainerData replicated =
         (KeyValueContainerData) ContainerDataYaml
             .readContainer(descriptor);
 
-    containerData.setState(originalContainerData.getState());
-    containerData
-        .setContainerDBType(originalContainerData.getContainerDBType());
-    containerData.setSchemaVersion(originalContainerData.getSchemaVersion());
-    containerData.setLayoutVersion(
-        originalContainerData.getLayOutVersion().getVersion());
+    KeyValueContainerData updated = new KeyValueContainerData(
+        replicated.getContainerID(),
+        replicated.getLayOutVersion(),
+        replicated.getMaxSize(),
+        replicated.getOriginPipelineId(),
+        replicated.getOriginNodeId());
 
-    //update descriptor
-    return containerData;
+    //inherited from the replicated
+    updated
+        .setState(replicated.getState());
+    updated
+        .setContainerDBType(replicated.getContainerDBType());
+    updated
+        .updateBlockCommitSequenceId(replicated.getBlockCommitSequenceId());
+    updated
+        .setSchemaVersion(replicated.getSchemaVersion());
+
+    //inherited from the pre-created seed container
+    updated.setMetadataPath(preCreated.getMetadataPath());
+    updated.setDbFile(preCreated.getDbFile());
+    updated.setChunksPath(preCreated.getChunksPath());
+    updated.setVolume(preCreated.getVolume());
+
+    return updated;
   }
 
   @Override

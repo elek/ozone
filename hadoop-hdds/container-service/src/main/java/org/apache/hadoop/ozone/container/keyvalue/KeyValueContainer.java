@@ -413,7 +413,7 @@ public class KeyValueContainer implements Container<KeyValueContainerData> {
     // to flush the update container data to disk.
     long containerId = containerData.getContainerID();
     if(!containerData.isValid()) {
-      LOG.debug("Invalid container data. ContainerID: {}", containerId);
+      LOG.warn("Invalid container data. ContainerID: {}", containerId);
       throw new StorageContainerException("Invalid container data. " +
           "ContainerID: " + containerId, INVALID_CONTAINER_STATE);
     }

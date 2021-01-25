@@ -100,13 +100,21 @@ public class DownloadAndImportReplicator implements ContainerReplicator {
           new KeyValueContainerData(containerID,
               ChunkLayOutVersion.FILE_PER_BLOCK, maxContainerSize, "", "");
 
+
+      //choose a volume
+      final HddsVolume volume = volumeChoosingPolicy
+          .chooseVolume(volumeSet.getVolumesList(), maxContainerSize);
+
+      //fill the path fields
+      containerData.assignToVolume(scmId.get(), volume);
+
+      //download data
       final KeyValueContainerData loadedContainerData =
           downloader
               .getContainerDataFromReplicas(containerData, sourceDatanodes);
 
-      final HddsVolume volume = volumeChoosingPolicy
-          .chooseVolume(volumeSet.getVolumesList(), maxContainerSize);
-      loadedContainerData.assignToVolume(scmId.get(), volume);
+      LOG.info("Container {} is downloaded, starting to import.",
+          containerID);
 
       //write out container descriptor
       KeyValueContainer keyValueContainer =
@@ -116,13 +124,10 @@ public class DownloadAndImportReplicator implements ContainerReplicator {
       keyValueContainer.update(loadedContainerData.getMetadata(), true);
 
       //fill in memory stat counter (keycount, byte usage)
-      KeyValueContainerUtil.parseKVContainerData(containerData, config);
+      KeyValueContainerUtil.parseKVContainerData(loadedContainerData, config);
 
       //load container
       containerSet.addContainer(keyValueContainer);
-
-      LOG.info("Container {} is downloaded, starting to import.",
-          containerID);
 
       LOG.info("Container {} is replicated successfully", containerID);
       task.setStatus(Status.DONE);
