@@ -18,63 +18,56 @@
 
 package org.apache.hadoop.ozone.container.keyvalue;
 
-import org.apache.hadoop.conf.StorageUnit;
-import org.apache.hadoop.hdds.client.BlockID;
-import org.apache.hadoop.hdds.conf.ConfigurationSource;
-import org.apache.hadoop.hdds.conf.OzoneConfiguration;
-import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos;
-
-import org.apache.hadoop.hdds.scm.container.common.helpers
-    .StorageContainerException;
-import org.apache.hadoop.hdds.utils.db.Table;
-import org.apache.hadoop.ozone.OzoneConsts;
-import org.apache.hadoop.ozone.container.common.helpers.BlockData;
-import org.apache.hadoop.ozone.container.common.impl.ChunkLayOutVersion;
-import org.apache.hadoop.ozone.container.common.impl.ContainerDataYaml;
-import org.apache.hadoop.ozone.container.common.volume.HddsVolume;
-import org.apache.hadoop.ozone.container.common.volume
-    .RoundRobinVolumeChoosingPolicy;
-import org.apache.hadoop.ozone.container.common.volume.VolumeSet;
-import org.apache.hadoop.ozone.container.common.volume.MutableVolumeSet;
-import org.apache.hadoop.ozone.container.keyvalue.helpers.BlockUtils;
-import org.apache.hadoop.ozone.container.metadata.AbstractDatanodeStore;
-import org.apache.hadoop.test.GenericTestUtils;
-import org.apache.hadoop.util.DiskChecker;
-import org.apache.hadoop.ozone.container.common.utils.ReferenceCountedDB;
-
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.mockito.Mockito;
-import org.rocksdb.ColumnFamilyOptions;
-
 import java.io.File;
-
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import org.apache.hadoop.conf.StorageUnit;
+import org.apache.hadoop.hdds.client.BlockID;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
+import org.apache.hadoop.hdds.conf.OzoneConfiguration;
+import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos;
+import org.apache.hadoop.hdds.scm.container.common.helpers.StorageContainerException;
+import org.apache.hadoop.hdds.utils.db.Table;
+import org.apache.hadoop.ozone.OzoneConsts;
+import org.apache.hadoop.ozone.container.common.helpers.BlockData;
+import org.apache.hadoop.ozone.container.common.impl.ChunkLayOutVersion;
+import org.apache.hadoop.ozone.container.common.impl.ContainerDataYaml;
+import org.apache.hadoop.ozone.container.common.utils.ReferenceCountedDB;
+import org.apache.hadoop.ozone.container.common.volume.HddsVolume;
+import org.apache.hadoop.ozone.container.common.volume.MutableVolumeSet;
+import org.apache.hadoop.ozone.container.common.volume.RoundRobinVolumeChoosingPolicy;
+import org.apache.hadoop.ozone.container.common.volume.VolumeSet;
+import org.apache.hadoop.ozone.container.keyvalue.helpers.BlockUtils;
+import org.apache.hadoop.ozone.container.metadata.AbstractDatanodeStore;
+import org.apache.hadoop.test.GenericTestUtils;
+import org.apache.hadoop.util.DiskChecker;
+
 import static org.apache.ratis.util.Preconditions.assertTrue;
+import org.junit.Assert;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
+import org.mockito.Mockito;
 import static org.mockito.Mockito.mock;
+import org.rocksdb.ColumnFamilyOptions;
 
 /**
  * Class to test KeyValue Container operations.
@@ -141,74 +134,11 @@ public class TestKeyValueContainer {
     // Check whether container file and container db file exists or not.
     assertTrue(keyValueContainer.getContainerFile().exists(),
         ".Container File does not exist");
-    assertTrue(keyValueContainer.getContainerDBFile().exists(), "Container " +
-        "DB does not exist");
+//    assertTrue(keyValueContainer.getContainerDBFile().exists(), "Container " +
+//        "DB does not exist");
   }
 
-  @Test
-  public void testContainerImportExport() throws Exception {
-    long containerId = keyValueContainer.getContainerData().getContainerID();
-    createContainer();
-    long numberOfKeysToWrite = 12;
-    closeContainer();
-    populate(numberOfKeysToWrite);
 
-    //destination path
-    File folderToExport = folder.newFile("exported.tar.gz");
-
-    TarContainerPacker packer = new TarContainerPacker();
-
-    //export the container
-    try (FileOutputStream fos = new FileOutputStream(folderToExport)) {
-      keyValueContainer
-          .exportContainerData(fos, packer);
-    }
-
-    //delete the original one
-    keyValueContainer.delete();
-
-    //create a new one
-    KeyValueContainerData containerData =
-        new KeyValueContainerData(containerId,
-            keyValueContainerData.getLayOutVersion(),
-            keyValueContainerData.getMaxSize(), UUID.randomUUID().toString(),
-            datanodeId.toString());
-    KeyValueContainer container = new KeyValueContainer(containerData, CONF);
-
-    HddsVolume containerVolume = volumeChoosingPolicy.chooseVolume(volumeSet
-        .getVolumesList(), 1);
-    String hddsVolumeDir = containerVolume.getHddsRootDir().toString();
-
-    container.populatePathFields(scmId, containerVolume, hddsVolumeDir);
-    try (FileInputStream fis = new FileInputStream(folderToExport)) {
-      container.importContainerData(fis, packer);
-    }
-
-    assertEquals("value1", containerData.getMetadata().get("key1"));
-    assertEquals(keyValueContainerData.getContainerDBType(),
-        containerData.getContainerDBType());
-    assertEquals(keyValueContainerData.getState(),
-        containerData.getState());
-    assertEquals(numberOfKeysToWrite,
-        containerData.getKeyCount());
-    assertEquals(keyValueContainerData.getLayOutVersion(),
-        containerData.getLayOutVersion());
-    assertEquals(keyValueContainerData.getMaxSize(),
-        containerData.getMaxSize());
-    assertEquals(keyValueContainerData.getBytesUsed(),
-        containerData.getBytesUsed());
-
-    //Can't overwrite existing container
-    try {
-      try (FileInputStream fis = new FileInputStream(folderToExport)) {
-        container.importContainerData(fis, packer);
-      }
-      fail("Container is imported twice. Previous files are overwritten");
-    } catch (IOException ex) {
-      //all good
-    }
-
-  }
 
   /**
    * Create the container on disk.
@@ -327,8 +257,8 @@ public class TestKeyValueContainer {
 
     assertFalse("Container File still exists",
         keyValueContainer.getContainerFile().exists());
-    assertFalse("Container DB file still exists",
-        keyValueContainer.getContainerDBFile().exists());
+//    assertFalse("Container DB file still exists",
+//        keyValueContainer.getContainerDBFile().exists());
   }
 
   @Test

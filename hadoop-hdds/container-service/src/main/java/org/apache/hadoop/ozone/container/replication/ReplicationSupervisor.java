@@ -25,6 +25,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.ozone.container.common.impl.ContainerSet;
 import org.apache.hadoop.ozone.container.replication.ReplicationTask.Status;
 
@@ -44,6 +45,8 @@ public class ReplicationSupervisor {
   private final ContainerSet containerSet;
   private final ContainerReplicator replicator;
   private final ExecutorService executor;
+
+  private ConfigurationSource config;
 
   private final AtomicLong requestCounter = new AtomicLong();
   private final AtomicLong successCounter = new AtomicLong();

@@ -32,9 +32,9 @@ import java.util.stream.Stream;
 
 import org.apache.hadoop.hdds.HddsUtils;
 import org.apache.hadoop.ozone.OzoneConsts;
-import org.apache.hadoop.ozone.container.common.interfaces.Container;
 import org.apache.hadoop.ozone.container.common.interfaces.ContainerPacker;
 
+import static java.util.stream.Collectors.toList;
 import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.commons.compress.archivers.ArchiveInputStream;
 import org.apache.commons.compress.archivers.ArchiveOutputStream;
@@ -44,13 +44,11 @@ import org.apache.commons.compress.compressors.CompressorException;
 import org.apache.commons.compress.compressors.CompressorStreamFactory;
 import org.apache.commons.io.IOUtils;
 
-import static java.util.stream.Collectors.toList;
-
 /**
  * Compress/uncompress KeyValueContainer data to a tar.gz archive.
  */
 public class TarContainerPacker
-    implements ContainerPacker<KeyValueContainerData> {
+    implements ContainerPacker {
 
   static final String CHUNKS_DIR_NAME = OzoneConsts.STORAGE_DIR_CHUNKS;
 
@@ -62,15 +60,14 @@ public class TarContainerPacker
    * Given an input stream (tar file) extract the data to the specified
    * directories.
    *
-   * @param container container which defines the destination structure.
+   * @param containerData container which defines the destination structure.
    * @param input the input stream.
    */
   @Override
-  public byte[] unpackContainerData(Container<KeyValueContainerData> container,
+  public byte[] unpackContainerData(KeyValueContainerData containerData,
       InputStream input)
       throws IOException {
     byte[] descriptorFileContent = null;
-    KeyValueContainerData containerData = container.getContainerData();
     Path dbRoot = containerData.getDbFile().toPath();
     Path chunksRoot = Paths.get(containerData.getChunksPath());
 
@@ -103,8 +100,7 @@ public class TarContainerPacker
 
     } catch (CompressorException e) {
       throw new IOException(
-          "Can't uncompress the given container: " + container
-              .getContainerData().getContainerID(),
+          "Can't uncompress the given container: " + containerData.getContainerID(),
           e);
     }
   }
@@ -139,15 +135,13 @@ public class TarContainerPacker
    * Given a containerData include all the required container data/metadata
    * in a tar file.
    *
-   * @param container Container to archive (data + metadata).
+   * @param containerData Container to archive
    * @param output   Destination tar file/stream.
    */
   @Override
-  public void pack(Container<KeyValueContainerData> container,
+  public void pack(KeyValueContainerData containerData,
       OutputStream output)
       throws IOException {
-
-    KeyValueContainerData containerData = container.getContainerData();
 
     try (OutputStream compressed = compress(output);
          ArchiveOutputStream archiveOutput = tar(compressed)) {
@@ -158,7 +152,7 @@ public class TarContainerPacker
       includePath(Paths.get(containerData.getChunksPath()), CHUNKS_DIR_NAME,
           archiveOutput);
 
-      includeFile(container.getContainerFile(), CONTAINER_FILE_NAME,
+      includeFile(containerData.getContainerFile(), CONTAINER_FILE_NAME,
           archiveOutput);
     } catch (CompressorException e) {
       throw new IOException(

@@ -18,19 +18,17 @@
 
 package org.apache.hadoop.ozone.container.replication;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
 import org.apache.hadoop.hdds.protocol.MockDatanodeDetails;
+import org.apache.hadoop.ozone.container.keyvalue.KeyValueContainerData;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -47,17 +45,17 @@ public class TestSimpleContainerDownloader {
 
     //GIVEN
     List<DatanodeDetails> datanodes = createDatanodes();
+    KeyValueContainerData kvc = new KeyValueContainerData(1L);
 
     SimpleContainerDownloader downloader =
         createDownloaderWithPredefinedFailures(true);
 
     //WHEN
-    final Path result =
-        downloader.getContainerDataFromReplicas(1L, datanodes)
-            .get(1L, TimeUnit.SECONDS);
+    downloader.getContainerDataFromReplicas(kvc, datanodes);
 
     //THEN
-    Assert.assertEquals(datanodes.get(0).getUuidString(), result.toString());
+    //    Assert.assertEquals(datanodes.get(0).getUuidString(), result
+    //   .toString());
   }
 
   @Test
@@ -71,13 +69,14 @@ public class TestSimpleContainerDownloader {
         createDownloaderWithPredefinedFailures(true, datanodes.get(0));
 
     //WHEN
-    final Path result =
-        downloader.getContainerDataFromReplicas(1L, datanodes)
-            .get(1L, TimeUnit.SECONDS);
+
+    final KeyValueContainerData data = downloader
+        .getContainerDataFromReplicas(new KeyValueContainerData(1L), datanodes);
 
     //THEN
     //first datanode is failed, second worked
-    Assert.assertEquals(datanodes.get(1).getUuidString(), result.toString());
+    Assert.assertEquals(datanodes.get(1).getUuidString(),
+        data.getContainerDBType());
   }
 
   @Test
@@ -90,13 +89,13 @@ public class TestSimpleContainerDownloader {
         createDownloaderWithPredefinedFailures(false, datanodes.get(0));
 
     //WHEN
-    final Path result =
-        downloader.getContainerDataFromReplicas(1L, datanodes)
-            .get(1L, TimeUnit.SECONDS);
+    final KeyValueContainerData data = downloader
+        .getContainerDataFromReplicas(new KeyValueContainerData(1L), datanodes);
 
     //THEN
     //first datanode is failed, second worked
-    Assert.assertEquals(datanodes.get(1).getUuidString(), result.toString());
+    Assert.assertEquals(datanodes.get(1).getUuidString(),
+        data.getContainerDBType());
   }
 
   /**
@@ -113,21 +112,22 @@ public class TestSimpleContainerDownloader {
         new SimpleContainerDownloader(new OzoneConfiguration(), null) {
 
           @Override
-          protected CompletableFuture<Path> downloadContainer(
-              long containerId, DatanodeDetails datanode
-          ) {
-            //download is always successful.
-            return CompletableFuture
-                .completedFuture(Paths.get(datanode.getUuidString()));
+          protected KeyValueContainerData downloadContainer(
+              KeyValueContainerData containerData, DatanodeDetails datanode
+          ) throws IOException {
+            containerData.setContainerDBType(datanode.getUuidString());
+            return containerData;
           }
         };
 
     //WHEN executed, THEN at least once the second datanode should be
     //returned.
     for (int i = 0; i < 10000; i++) {
-      Path path =
-          downloader.getContainerDataFromReplicas(1L, datanodes).get();
-      if (path.toString().equals(datanodes.get(1).getUuidString())) {
+      final KeyValueContainerData containerData =
+          downloader.getContainerDataFromReplicas(new KeyValueContainerData(1L),
+              datanodes);
+      if (containerData.getContainerDBType()
+          .equals(datanodes.get(1).getUuidString())) {
         return;
       }
     }
@@ -166,8 +166,8 @@ public class TestSimpleContainerDownloader {
       }
 
       @Override
-      protected CompletableFuture<Path> downloadContainer(
-          long containerId,
+      protected KeyValueContainerData downloadContainer(
+          KeyValueContainerData containerData,
           DatanodeDetails datanode
       ) {
 
@@ -175,15 +175,13 @@ public class TestSimpleContainerDownloader {
           if (directException) {
             throw new RuntimeException("Unavailable datanode");
           } else {
-            return CompletableFuture.supplyAsync(() -> {
-              throw new RuntimeException("Unavailable datanode");
-            });
+            throw new RuntimeException("Unavailable datanode");
+
           }
         } else {
-
           //path includes the dn id to make it possible to assert.
-          return CompletableFuture.completedFuture(
-              Paths.get(datanode.getUuidString()));
+          containerData.setContainerDBType(datanode.getUuidString());
+          return containerData;
         }
 
       }

@@ -648,6 +648,10 @@ public class HddsDispatcher implements ContainerDispatcher, Auditor {
         .build();
   }
 
+  public String getScmId() {
+    return scmID;
+  }
+
   enum EventType {
     READ,
     WRITE

@@ -33,29 +33,28 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.apache.commons.compress.archivers.ArchiveOutputStream;
-import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
-import org.apache.commons.compress.compressors.CompressorOutputStream;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.ozone.container.common.impl.ChunkLayOutVersion;
 import org.apache.hadoop.ozone.container.common.interfaces.ContainerPacker;
+import org.apache.hadoop.test.LambdaTestUtils;
 
+import org.apache.commons.compress.archivers.ArchiveOutputStream;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
+import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
 import org.apache.commons.compress.compressors.CompressorException;
 import org.apache.commons.compress.compressors.CompressorInputStream;
+import org.apache.commons.compress.compressors.CompressorOutputStream;
 import org.apache.commons.compress.compressors.CompressorStreamFactory;
+import static org.apache.commons.compress.compressors.CompressorStreamFactory.GZIP;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
-import org.apache.hadoop.test.LambdaTestUtils;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-
-import static org.apache.commons.compress.compressors.CompressorStreamFactory.GZIP;
 
 /**
  * Test the tar/untar for a given container.
@@ -73,7 +72,7 @@ public class TestTarContainerPacker {
 
   private static final String TEST_DESCRIPTOR_FILE_CONTENT = "descriptor";
 
-  private final ContainerPacker<KeyValueContainerData> packer
+  private final ContainerPacker packer
       = new TarContainerPacker();
 
   private static final Path SOURCE_CONTAINER_ROOT =
@@ -163,7 +162,7 @@ public class TestTarContainerPacker {
 
     //WHEN: pack it
     try (FileOutputStream output = new FileOutputStream(targetFile.toFile())) {
-      packer.pack(sourceContainer, output);
+      packer.pack(sourceContainer.getContainerData(), output);
     }
 
     //THEN: check the result
@@ -193,15 +192,13 @@ public class TestTarContainerPacker {
     KeyValueContainerData destinationContainerData =
         createContainer(DEST_CONTAINER_ROOT);
 
-    KeyValueContainer destinationContainer =
-        new KeyValueContainer(destinationContainerData, conf);
-
     String descriptor;
 
     //unpackContainerData
     try (FileInputStream input = new FileInputStream(targetFile.toFile())) {
       descriptor =
-          new String(packer.unpackContainerData(destinationContainer, input),
+          new String(
+              packer.unpackContainerData(destinationContainerData, input),
               StandardCharsets.UTF_8);
     }
 
@@ -214,7 +211,7 @@ public class TestTarContainerPacker {
     Assert.assertFalse(
         "Descriptor file should not have been extracted by the "
             + "unpackContainerData Call",
-        destinationContainer.getContainerFile().exists());
+        destinationContainerData.getContainerFile().exists());
     Assert.assertEquals(TEST_DESCRIPTOR_FILE_CONTENT, descriptor);
   }
 
@@ -297,14 +294,14 @@ public class TestTarContainerPacker {
     try (FileInputStream input = new FileInputStream(containerFile)) {
       OzoneConfiguration conf = new OzoneConfiguration();
       KeyValueContainerData data = createContainer(DEST_CONTAINER_ROOT);
-      KeyValueContainer container = new KeyValueContainer(data, conf);
-      packer.unpackContainerData(container, input);
+      packer.unpackContainerData(data, input);
       return data;
     }
   }
 
   private void writeDescriptor(KeyValueContainer container) throws IOException {
-    try (FileWriter writer = new FileWriter(container.getContainerFile())) {
+    try (FileWriter writer = new FileWriter(
+        container.getContainerData().getContainerFile())) {
       IOUtils.write(TEST_DESCRIPTOR_FILE_CONTENT, writer);
     }
   }
