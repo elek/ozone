@@ -66,4 +66,8 @@ public abstract class BaseGenerator extends BaseFreonGenerator implements
   public int getKeySize() {
     return keySize;
   }
+
+  public void setContainerIdOffset(int i) {
+    this.containerIdOffset = i;
+  }
 }

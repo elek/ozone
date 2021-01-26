@@ -109,12 +109,7 @@ public class GeneratorDatanode extends BaseGenerator {
   public Void call() throws Exception {
     init();
 
-    numberOfPipelines = datanodes / 3;
-
-    //generate only containers for one datanodes
-    setTestNo(getTestNo() / numberOfPipelines);
-
-    currentPipeline = (datanodeIndex - 1) % numberOfPipelines;
+    initIndexParameters();
 
     config = createOzoneConfiguration();
 
@@ -164,12 +159,20 @@ public class GeneratorDatanode extends BaseGenerator {
     return null;
   }
 
+  public void initIndexParameters() {
+    numberOfPipelines = datanodes / 3;
+
+    //generate only containers for one datanodes
+    setTestNo(getTestNo() / numberOfPipelines);
+
+    currentPipeline = (datanodeIndex - 1) % numberOfPipelines;
+  }
+
   private void generateData(long index) throws Exception {
 
     timer.time((Callable<Void>) () -> {
 
-      long containerId =
-          getContainerIdOffset() + index * numberOfPipelines + currentPipeline;
+      long containerId = getContainerIdForIndex(index);
 
       SplittableRandom random = new SplittableRandom(containerId);
 
@@ -228,6 +231,10 @@ public class GeneratorDatanode extends BaseGenerator {
       return null;
     });
 
+  }
+
+  public long getContainerIdForIndex(long index) {
+    return getContainerIdOffset() + index * numberOfPipelines + currentPipeline;
   }
 
   private void generatedRandomData(SplittableRandom random, byte[] data) {
@@ -298,6 +305,18 @@ public class GeneratorDatanode extends BaseGenerator {
             context);
     logCounter++;
     chunkManager.finishWriteChunks(container, new BlockData(blockId));
+  }
+
+  public void setDatanodes(int datanodes) {
+    this.datanodes = datanodes;
+  }
+
+  public void setDatanodeIndex(int datanodeIndex) {
+    this.datanodeIndex = datanodeIndex;
+  }
+
+  public void setNumberOfPipelines(int i) {
+    this.numberOfPipelines = i;
   }
 
 }
