@@ -121,8 +121,8 @@ public class ClosedContainerReplicator extends BaseFreonGenerator implements
 
     }
 
-    //important: override the max number of tasks.
-    setTestNo(replicationTasks.size());
+    //important: limit the max number of tasks.
+    setTestNo(Math.min(replicationTasks.size(), getTestNo()));
 
     init();
 
