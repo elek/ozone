@@ -53,7 +53,10 @@ public class DownloadAndImportReplicator implements ContainerReplicator {
   private final ContainerSet containerSet;
 
   private final ContainerDownloader downloader;
+
   private final ConfigurationSource config;
+
+  private VolumeChoosingPolicy volumeChoosingPolicy;
 
   private final Supplier<String> scmId;
 
@@ -71,6 +74,24 @@ public class DownloadAndImportReplicator implements ContainerReplicator {
     this.config = config;
     this.scmId = scmId;
     this.volumeSet = volumeSet;
+    Class<? extends VolumeChoosingPolicy> volumeChoosingPolicyType = null;
+    try {
+      volumeChoosingPolicyType =
+          config.getClass(
+              HDDS_DATANODE_VOLUME_CHOOSING_POLICY,
+              RoundRobinVolumeChoosingPolicy
+                  .class, VolumeChoosingPolicy.class);
+
+      this.volumeChoosingPolicy = volumeChoosingPolicyType.newInstance();
+
+    } catch (InstantiationException ex) {
+      throw new IllegalArgumentException(
+          "Couldn't create volume choosing policy: " + volumeChoosingPolicyType,
+          ex);
+    } catch (IllegalAccessException e) {
+      e.printStackTrace();
+    }
+
   }
 
 
@@ -87,10 +108,6 @@ public class DownloadAndImportReplicator implements ContainerReplicator {
         sourceDatanodes);
 
     try {
-
-      VolumeChoosingPolicy volumeChoosingPolicy = config.getClass(
-          HDDS_DATANODE_VOLUME_CHOOSING_POLICY, RoundRobinVolumeChoosingPolicy
-              .class, VolumeChoosingPolicy.class).newInstance();
 
       long maxContainerSize = (long) config.getStorageSize(
           ScmConfigKeys.OZONE_SCM_CONTAINER_SIZE,
