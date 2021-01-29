@@ -43,10 +43,6 @@ import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
 import org.apache.commons.compress.compressors.CompressorException;
-import org.apache.commons.compress.compressors.CompressorInputStream;
-import org.apache.commons.compress.compressors.CompressorOutputStream;
-import org.apache.commons.compress.compressors.CompressorStreamFactory;
-import static org.apache.commons.compress.compressors.CompressorStreamFactory.GZIP;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.junit.AfterClass;
@@ -158,7 +154,7 @@ public class TestTarContainerPacker {
     //sample container descriptor file
     writeDescriptor(sourceContainer);
 
-    Path targetFile = TEMP_DIR.resolve("container.tar.gz");
+    Path targetFile = TEMP_DIR.resolve("container.tar");
 
     //WHEN: pack it
     try (FileOutputStream output = new FileOutputStream(targetFile.toFile())) {
@@ -167,16 +163,13 @@ public class TestTarContainerPacker {
 
     //THEN: check the result
     try (FileInputStream input = new FileInputStream(targetFile.toFile())) {
-      CompressorInputStream uncompressed = new CompressorStreamFactory()
-          .createCompressorInputStream(GZIP, input);
-      TarArchiveInputStream tarStream = new TarArchiveInputStream(uncompressed);
+      TarArchiveInputStream tarStream = new TarArchiveInputStream(input);
 
       TarArchiveEntry entry;
       Map<String, TarArchiveEntry> entries = new HashMap<>();
       while ((entry = tarStream.getNextTarEntry()) != null) {
         entries.put(entry.getName(), entry);
       }
-
       Assert.assertTrue(
           entries.containsKey("container.yaml"));
 
@@ -334,11 +327,9 @@ public class TestTarContainerPacker {
 
   private File packContainerWithSingleFile(File file, String entryName)
       throws Exception {
-    File targetFile = TEMP_DIR.resolve("container.tar.gz").toFile();
+    File targetFile = TEMP_DIR.resolve("container.tar").toFile();
     try (FileOutputStream output = new FileOutputStream(targetFile);
-         CompressorOutputStream gzipped = new CompressorStreamFactory()
-             .createCompressorOutputStream(GZIP, output);
-         ArchiveOutputStream archive = new TarArchiveOutputStream(gzipped)) {
+         ArchiveOutputStream archive = new TarArchiveOutputStream(output)) {
       TarContainerPacker.includeFile(file, entryName, archive);
     }
     return targetFile;

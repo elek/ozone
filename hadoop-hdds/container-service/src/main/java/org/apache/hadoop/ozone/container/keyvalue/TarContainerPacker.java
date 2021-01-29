@@ -71,8 +71,7 @@ public class TarContainerPacker
     Path dbRoot = containerData.getDbFile().toPath();
     Path chunksRoot = Paths.get(containerData.getChunksPath());
 
-    try (InputStream decompressed = decompress(input);
-         ArchiveInputStream archiveInput = untar(decompressed)) {
+    try (ArchiveInputStream archiveInput = untar(input)) {
 
       ArchiveEntry entry = archiveInput.getNextEntry();
       while (entry != null) {
@@ -97,11 +96,6 @@ public class TarContainerPacker
         entry = archiveInput.getNextEntry();
       }
       return descriptorFileContent;
-
-    } catch (CompressorException e) {
-      throw new IOException(
-          "Can't uncompress the given container: " + containerData.getContainerID(),
-          e);
     }
   }
 
@@ -143,8 +137,7 @@ public class TarContainerPacker
       OutputStream output)
       throws IOException {
 
-    try (OutputStream compressed = compress(output);
-         ArchiveOutputStream archiveOutput = tar(compressed)) {
+    try (ArchiveOutputStream archiveOutput = tar(output)) {
 
       includePath(containerData.getDbFile().toPath(), DB_DIR_NAME,
           archiveOutput);
@@ -154,18 +147,14 @@ public class TarContainerPacker
 
       includeFile(containerData.getContainerFile(), CONTAINER_FILE_NAME,
           archiveOutput);
-    } catch (CompressorException e) {
-      throw new IOException(
-          "Can't compress the container: " + containerData.getContainerID(),
-          e);
     }
+
   }
 
   @Override
   public byte[] unpackContainerDescriptor(InputStream input)
       throws IOException {
-    try (InputStream decompressed = decompress(input);
-         ArchiveInputStream archiveInput = untar(decompressed)) {
+    try (ArchiveInputStream archiveInput = untar(input)) {
 
       ArchiveEntry entry = archiveInput.getNextEntry();
       while (entry != null) {
@@ -175,12 +164,7 @@ public class TarContainerPacker
         }
         entry = archiveInput.getNextEntry();
       }
-    } catch (CompressorException e) {
-      throw new IOException(
-          "Can't read the container descriptor from the container archive",
-          e);
     }
-
     throw new IOException(
         "Container descriptor is missing from the container archive.");
   }
@@ -229,16 +213,5 @@ public class TarContainerPacker
     return new TarArchiveOutputStream(output);
   }
 
-  private static InputStream decompress(InputStream input)
-      throws CompressorException {
-    return new CompressorStreamFactory()
-        .createCompressorInputStream(CompressorStreamFactory.GZIP, input);
-  }
-
-  private static OutputStream compress(OutputStream output)
-      throws CompressorException {
-    return new CompressorStreamFactory()
-        .createCompressorOutputStream(CompressorStreamFactory.GZIP, output);
-  }
 
 }
