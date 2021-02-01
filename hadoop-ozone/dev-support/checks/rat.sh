@@ -28,7 +28,7 @@ mvn -B -fn org.apache.rat:apache-rat-plugin:0.13:check
 
 cd "$DIR/../../.." || exit 1
 
-grep -r --include=rat.txt "!????" hadoop-hdds hadoop-ozone | tee "$REPORT_FILE"
+grep -r -h --include=rat.txt "!????"  | awk '{print $2}' | xargs -n1 realpath --relative-to=`pwd`| awk '{print "::error file="$1",line=1::Apache license header is missing"}'
 
 wc -l "$REPORT_FILE" | awk '{print $1}'> "$REPORT_DIR/failures"
 
