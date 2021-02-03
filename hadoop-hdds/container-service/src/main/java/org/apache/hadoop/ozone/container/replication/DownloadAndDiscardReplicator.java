@@ -26,74 +26,27 @@ import org.apache.hadoop.hdds.protocol.DatanodeDetails;
 import org.apache.hadoop.hdds.scm.ScmConfigKeys;
 import org.apache.hadoop.ozone.container.common.impl.ChunkLayOutVersion;
 import org.apache.hadoop.ozone.container.common.impl.ContainerSet;
-import org.apache.hadoop.ozone.container.common.interfaces.VolumeChoosingPolicy;
 import org.apache.hadoop.ozone.container.common.volume.HddsVolume;
-import org.apache.hadoop.ozone.container.common.volume.RoundRobinVolumeChoosingPolicy;
 import org.apache.hadoop.ozone.container.common.volume.VolumeSet;
-import org.apache.hadoop.ozone.container.keyvalue.KeyValueContainer;
 import org.apache.hadoop.ozone.container.keyvalue.KeyValueContainerData;
-import org.apache.hadoop.ozone.container.keyvalue.helpers.KeyValueContainerUtil;
 import org.apache.hadoop.ozone.container.replication.ReplicationTask.Status;
 
-import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_DATANODE_VOLUME_CHOOSING_POLICY;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /**
- * Default replication implementation.
+ * Fake replicator for downloading the data and ignoring it.
  * <p>
- * This class does the real job. Executes the download and import the container
- * to the container set.
+ * Usable only for testing.
  */
-public class DownloadAndImportReplicator implements ContainerReplicator {
+public class DownloadAndDiscardReplicator extends DownloadAndImportReplicator {
 
-  public static final Logger LOG =
-      LoggerFactory.getLogger(DownloadAndImportReplicator.class);
-
-  private final ContainerSet containerSet;
-
-  protected final ContainerDownloader downloader;
-
-  protected final ConfigurationSource config;
-
-  protected VolumeChoosingPolicy volumeChoosingPolicy;
-
-  protected final Supplier<String> scmId;
-
-  protected VolumeSet volumeSet;
-
-  public DownloadAndImportReplicator(
+  public DownloadAndDiscardReplicator(
       ConfigurationSource config,
       Supplier<String> scmId,
       ContainerSet containerSet,
       ContainerDownloader downloader,
       VolumeSet volumeSet
   ) {
-    this.containerSet = containerSet;
-    this.downloader = downloader;
-    this.config = config;
-    this.scmId = scmId;
-    this.volumeSet = volumeSet;
-    Class<? extends VolumeChoosingPolicy> volumeChoosingPolicyType = null;
-    try {
-      volumeChoosingPolicyType =
-          config.getClass(
-              HDDS_DATANODE_VOLUME_CHOOSING_POLICY,
-              RoundRobinVolumeChoosingPolicy
-                  .class, VolumeChoosingPolicy.class);
-
-      this.volumeChoosingPolicy = volumeChoosingPolicyType.newInstance();
-
-    } catch (InstantiationException ex) {
-      throw new IllegalArgumentException(
-          "Couldn't create volume choosing policy: " + volumeChoosingPolicyType,
-          ex);
-    } catch (IllegalAccessException e) {
-      e.printStackTrace();
-    }
-
+    super(config, scmId, containerSet, downloader, volumeSet);
   }
-
 
   @Override
   public void replicate(ReplicationTask task) {
@@ -104,7 +57,7 @@ public class DownloadAndImportReplicator implements ContainerReplicator {
     }
     List<DatanodeDetails> sourceDatanodes = task.getSources();
 
-    LOG.info("Starting replication of container {} from {}", containerID,
+    LOG.info("Starting downloading container {} from {}", containerID,
         sourceDatanodes);
 
     try {
@@ -116,7 +69,6 @@ public class DownloadAndImportReplicator implements ContainerReplicator {
       KeyValueContainerData containerData =
           new KeyValueContainerData(containerID,
               ChunkLayOutVersion.FILE_PER_BLOCK, maxContainerSize, "", "");
-
 
       //choose a volume
       final HddsVolume volume = volumeChoosingPolicy
@@ -130,26 +82,10 @@ public class DownloadAndImportReplicator implements ContainerReplicator {
           downloader
               .getContainerDataFromReplicas(containerData, sourceDatanodes);
 
-      LOG.info("Container {} is downloaded, starting to import.",
-          containerID);
-
-      //write out container descriptor
-      KeyValueContainer keyValueContainer =
-          new KeyValueContainer(loadedContainerData, config);
-
-      //rewriting the yaml file with new checksum calculation.
-      keyValueContainer.update(loadedContainerData.getMetadata(), true);
-
-      //fill in memory stat counter (keycount, byte usage)
-      KeyValueContainerUtil.parseKVContainerData(loadedContainerData, config);
-
-      //load container
-      containerSet.addContainer(keyValueContainer);
-
-      LOG.info("Container {} is replicated successfully", containerID);
+      LOG.info("Container {} is download successfully", containerID);
       task.setStatus(Status.DONE);
     } catch (Exception e) {
-      LOG.error("Container {} replication was unsuccessful.", containerID, e);
+      LOG.error("Container {} download was unsuccessful.", containerID, e);
       task.setStatus(Status.FAILED);
     }
   }

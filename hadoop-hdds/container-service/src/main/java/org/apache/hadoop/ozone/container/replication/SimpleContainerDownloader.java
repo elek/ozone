@@ -55,10 +55,10 @@ public class SimpleContainerDownloader implements ContainerDownloader {
   private static final Logger LOG =
       LoggerFactory.getLogger(SimpleContainerDownloader.class);
 
-  private final Path workingDirectory;
-  private final SecurityConfig securityConfig;
-  private final X509Certificate caCert;
-  private TarContainerPacker packer = new TarContainerPacker();
+  protected final Path workingDirectory;
+  protected  final SecurityConfig securityConfig;
+  protected  final X509Certificate caCert;
+  protected  TarContainerPacker packer = new TarContainerPacker();
 
   public SimpleContainerDownloader(
       ConfigurationSource conf,
