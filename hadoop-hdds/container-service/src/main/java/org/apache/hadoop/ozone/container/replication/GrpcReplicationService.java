@@ -50,9 +50,8 @@ public class GrpcReplicationService extends
       StreamObserver<CopyContainerResponseProto> responseObserver) {
     long containerID = request.getContainerID();
     LOG.info("Streaming container data ({}) to other datanode", containerID);
-    try {
-      GrpcOutputStream outputStream =
-          new GrpcOutputStream(responseObserver, containerID, BUFFER_SIZE);
+    try (GrpcOutputStream outputStream =
+        new GrpcOutputStream(responseObserver, containerID, BUFFER_SIZE)) {
       source.copyData(containerID, outputStream);
     } catch (IOException e) {
       LOG.error("Error streaming container {}", containerID, e);
