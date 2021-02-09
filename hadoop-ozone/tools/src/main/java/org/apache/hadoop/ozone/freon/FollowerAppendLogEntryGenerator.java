@@ -327,11 +327,15 @@ public class FollowerAppendLogEntryGenerator extends BaseAppendLogGenerator
         RaftPeerId.getRaftPeerId(serverId);
 
     RaftGroup group = RaftGroup.valueOf(groupId,
-        RaftPeer.newBuilder().setId(serverId).setAddress(serverAddress).build(),
+        RaftPeer.newBuilder().setId(serverId)
+            .setAddress(serverAddress)
+            .setAdminAddress(adminAddress)
+            .build(),
         RaftPeer.newBuilder()
             .setId(RaftPeerId.valueOf(FAKE_LEADER_ID))
             .setAddress(FAKE_LEADER_ADDDRESS)
             .build());
+
     RaftClient client = RaftClient.newBuilder()
         .setClientId(clientId)
         .setProperties(new RaftProperties(true))
