@@ -45,7 +45,7 @@ public class BaseAppendLogGenerator extends BaseFreonGenerator {
       defaultValue = "localhost:9856")
   protected String serverAddress = "localhost:9856";
 
-  @Option(names = {"-c", "--admin-address"},
+  @Option(names = {"-a", "--admin-address"},
       description = "Host:port of the Ratis server",
       defaultValue = "localhost:9857")
   protected String adminAddress = "localhost:9857";
