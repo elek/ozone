@@ -423,6 +423,7 @@ public class FollowerAppendLogEntryGenerator extends BaseAppendLogGenerator
         new CompletableFuture<>();
     RequestVoteRequestProto voteRequest = RequestVoteRequestProto.newBuilder()
         .setServerRequest(createServerRequest(callIdRandom.nextLong()))
+        .setCandidateTerm(term)
         .setCandidateLastEntry(
             TermIndexProto.newBuilder()
                 .setIndex(0L)
