@@ -112,8 +112,23 @@ public class FollowerAppendLogEntryGenerator extends BaseAppendLogGenerator
 
   @Option(names = {"-b", "--batching"},
       description = "Number of write chunks requests in one AppendLogEntry",
-      defaultValue = "2")
+      defaultValue = "10")
   private int batching;
+
+  @Option(names = {"--open-containers"},
+      description = "Number of open containers at the same time",
+      defaultValue = "2")
+  int openContainers;
+
+  @Option(names = {"--blocks-per-container"},
+      description = "Expected number of blocks per containers",
+      defaultValue = "18")
+  int blockPerContainer;
+
+  @Option(names = {"--chunks-per-block"},
+      description = "Expected number of chunks per block",
+      defaultValue = "64")
+  int chunkPerBlock;
 
   @Option(names = {"-i", "--next-index"},
       description = "The next index in the term 2 to continue a test. (If "
@@ -247,9 +262,16 @@ public class FollowerAppendLogEntryGenerator extends BaseAppendLogGenerator
     for (int i = 0; i < batching; i++) {
       long index = nextIndex++;
 
-      long chunkId = batching * sequence + i;
-      long blockId = chunkId / 1000;
-      long containerId = blockId / 1000;
+      long counter = batching * sequence + i;
+      int cycleSize = blockPerContainer * chunkPerBlock * openContainers;
+      int cycleCounter = (int) (counter % cycleSize);
+
+      long chunkId = cycleCounter / openContainers / blockPerContainer;
+      long blockId = cycleCounter / openContainers % blockPerContainer;
+      long containerId =
+          cycleCounter % openContainers
+              + (counter / cycleSize) * openContainers;
+
       //ozone specific
       ByteString payload = ContainerCommandRequestProto.newBuilder()
           .setContainerID(containerId)
