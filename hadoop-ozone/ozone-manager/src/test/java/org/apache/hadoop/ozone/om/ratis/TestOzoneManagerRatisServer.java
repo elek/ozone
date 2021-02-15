@@ -28,6 +28,8 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.hadoop.hdds.HddsConfigKeys;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
+import org.apache.hadoop.hdds.security.x509.SecurityConfig;
+import org.apache.hadoop.hdds.security.x509.certificate.client.OMCertificateClient;
 import org.apache.hadoop.ozone.OmUtils;
 import org.apache.hadoop.ozone.OzoneConsts;
 import org.apache.hadoop.ozone.om.OMConfigKeys;
@@ -52,6 +54,7 @@ import org.junit.rules.TemporaryFolder;
 import org.mockito.Mockito;
 import org.slf4j.LoggerFactory;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.hadoop.ozone.OzoneConsts.TRANSACTION_INFO_KEY;
 import static org.junit.Assert.assertFalse;
 import static org.mockito.Mockito.when;
@@ -74,6 +77,8 @@ public class TestOzoneManagerRatisServer {
   private OzoneManager ozoneManager;
   private OMNodeDetails omNodeDetails;
   private TermIndex initialTermIndex;
+  private SecurityConfig secConfig;
+  private OMCertificateClient certClient;
 
   @Before
   public void init() throws Exception {
@@ -105,8 +110,10 @@ public class TestOzoneManagerRatisServer {
     initialTermIndex = TermIndex.valueOf(0, 0);
     OMRatisSnapshotInfo omRatisSnapshotInfo = new OMRatisSnapshotInfo();
     when(ozoneManager.getSnapshotInfo()).thenReturn(omRatisSnapshotInfo);
+    secConfig = new SecurityConfig(conf);
+    certClient = new OMCertificateClient(secConfig);
     omRatisServer = OzoneManagerRatisServer.newOMRatisServer(conf, ozoneManager,
-      omNodeDetails, Collections.emptyList());
+      omNodeDetails, Collections.emptyList(), secConfig, certClient);
     omRatisServer.start();
   }
 
@@ -146,7 +153,7 @@ public class TestOzoneManagerRatisServer {
 
     // Start new Ratis server. It should pick up and load the new SnapshotInfo
     omRatisServer = OzoneManagerRatisServer.newOMRatisServer(conf, ozoneManager,
-        omNodeDetails, Collections.emptyList());
+        omNodeDetails, Collections.emptyList(), secConfig, certClient);
     omRatisServer.start();
     TermIndex lastAppliedTermIndex =
         omRatisServer.getLastAppliedTermIndex();
@@ -186,7 +193,7 @@ public class TestOzoneManagerRatisServer {
   public void verifyRaftGroupIdGenerationWithDefaultOmServiceId() throws
       Exception {
     UUID uuid = UUID.nameUUIDFromBytes(OzoneConsts.OM_SERVICE_ID_DEFAULT
-        .getBytes());
+        .getBytes(UTF_8));
     RaftGroupId raftGroupId = omRatisServer.getRaftGroup().getGroupId();
     Assert.assertEquals(uuid, raftGroupId.getUuid());
     Assert.assertEquals(raftGroupId.toByteString().size(), 16);
@@ -216,10 +223,10 @@ public class TestOzoneManagerRatisServer {
     omRatisServer.stop();
     OzoneManagerRatisServer newOmRatisServer = OzoneManagerRatisServer
         .newOMRatisServer(newConf, ozoneManager, nodeDetails,
-            Collections.emptyList());
+            Collections.emptyList(), secConfig, certClient);
     newOmRatisServer.start();
 
-    UUID uuid = UUID.nameUUIDFromBytes(customOmServiceId.getBytes());
+    UUID uuid = UUID.nameUUIDFromBytes(customOmServiceId.getBytes(UTF_8));
     RaftGroupId raftGroupId = newOmRatisServer.getRaftGroup().getGroupId();
     Assert.assertEquals(uuid, raftGroupId.getUuid());
     Assert.assertEquals(raftGroupId.toByteString().size(), 16);
