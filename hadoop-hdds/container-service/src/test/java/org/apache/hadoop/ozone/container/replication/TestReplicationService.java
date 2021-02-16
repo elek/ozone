@@ -39,6 +39,7 @@ import org.apache.hadoop.test.GenericTestUtils;
 
 import com.google.common.base.Supplier;
 import com.google.common.collect.Maps;
+import org.apache.ratis.thirdparty.com.google.protobuf.ByteString;
 import org.junit.Test;
 
 /**
@@ -53,33 +54,35 @@ public class TestReplicationService {
     //start server
     ConfigurationSource ozoneConfig = new OzoneConfiguration();
 
-    final String datanodeUUID = UUID.randomUUID().toString();
+    final String sourceDnUUID = UUID.randomUUID().toString();
+    final String destDnUUID = UUID.randomUUID().toString();
     MutableVolumeSet sourceVolumes =
-        new MutableVolumeSet(datanodeUUID, ozoneConfig);
+        new MutableVolumeSet(sourceDnUUID, ozoneConfig);
+
     VolumeChoosingPolicy v = new RoundRobinVolumeChoosingPolicy();
     final HddsVolume volume =
         v.chooseVolume(sourceVolumes.getVolumesList(), 5L);
 
     KeyValueContainerData kvd = new KeyValueContainerData(1L, "/tmp/asd");
-    kvd.setState(State.CLOSED);
+    kvd.setState(State.OPEN);
     kvd.assignToVolume(scmUuid.toString(), volume);
     kvd.setSchemaVersion(OzoneConsts.SCHEMA_V2);
     KeyValueContainer kvc = new KeyValueContainer(kvd, ozoneConfig);
+    kvc.create(sourceVolumes, v, scmUuid.toString());
 
     ContainerSet sourceContainerSet = new ContainerSet();
     sourceContainerSet.addContainer(kvc);
 
     KeyValueHandler handler = new KeyValueHandler(ozoneConfig,
-        datanodeUUID, sourceContainerSet, sourceVolumes,
+        sourceDnUUID, sourceContainerSet, sourceVolumes,
         new ContainerMetrics(new int[] {}),
         containerReplicaProto -> {
-
         });
 
     final ContainerCommandRequestProto containerCommandRequest =
         ContainerCommandRequestProto.newBuilder()
             .setCmdType(Type.WriteChunk)
-            .setDatanodeUuid(datanodeUUID)
+            .setDatanodeUuid(destDnUUID)
             .setContainerID(kvc.getContainerData().getContainerID())
             .setWriteChunk(WriteChunkRequestProto.newBuilder()
                 .setBlockID(DatanodeBlockID.newBuilder()
@@ -87,6 +90,7 @@ public class TestReplicationService {
                     .setBlockCommitSequenceId(1L)
                     .setLocalID(1L)
                     .build())
+                .setData(ByteString.copyFromUtf8("asdf"))
                 .setChunkData(ChunkInfo.newBuilder()
                     .setChunkName("chunk1")
                     .setOffset(1L)
@@ -117,9 +121,10 @@ public class TestReplicationService {
     replicationServer.start();
 
     //start client
-
+    OzoneConfiguration clientConfig = new OzoneConfiguration();
+    clientConfig.set("hdds.datanode.dir","tmp/qwe");
     MutableVolumeSet volumeSet =
-        new MutableVolumeSet(datanodeUUID, ozoneConfig);
+        new MutableVolumeSet(destDnUUID, clientConfig);
 
     DownloadAndImportReplicator replicator = new DownloadAndImportReplicator(
         ozoneConfig,
