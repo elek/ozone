@@ -20,7 +20,6 @@ package org.apache.hadoop.ozone.container.keyvalue;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.time.Instant;
@@ -42,7 +41,6 @@ import org.apache.hadoop.ozone.OzoneConsts;
 import org.apache.hadoop.ozone.container.common.helpers.ContainerUtils;
 import org.apache.hadoop.ozone.container.common.impl.ContainerDataYaml;
 import org.apache.hadoop.ozone.container.common.interfaces.Container;
-import org.apache.hadoop.ozone.container.common.interfaces.ContainerPacker;
 import org.apache.hadoop.ozone.container.common.interfaces.VolumeChoosingPolicy;
 import org.apache.hadoop.ozone.container.common.utils.ReferenceCountedDB;
 import org.apache.hadoop.ozone.container.common.volume.HddsVolume;
@@ -618,43 +616,6 @@ public class KeyValueContainer implements Container<KeyValueContainerData> {
     return checker.fullCheck(throttler, canceler);
   }
 
-  public void exportContainerData(
-      OutputStream destination,
-      ContainerPacker packer
-  ) throws IOException {
-    writeLock();
-    try {
-      // Closed/ Quasi closed containers are considered for replication by
-      // replication manager if they are under-replicated.
-      ContainerProtos.ContainerDataProto.State state =
-          getContainerData().getState();
-      if (!(state == ContainerProtos.ContainerDataProto.State.CLOSED ||
-          state == ContainerDataProto.State.QUASI_CLOSED)) {
-        throw new IllegalStateException(
-            "Only (quasi)closed containers can be exported, but " +
-                "ContainerId=" + getContainerData().getContainerID() +
-                " is in state " + state);
-      }
-
-      try {
-        compactDB();
-        // Close DB (and remove from cache) to avoid concurrent modification
-        // while packing it.
-        BlockUtils.removeDB(containerData, config);
-      } finally {
-        readLock();
-        writeUnlock();
-      }
-
-      packer.pack(containerData, destination);
-    } finally {
-      if (lock.isWriteLockedByCurrentThread()) {
-        writeUnlock();
-      } else {
-        readUnlock();
-      }
-    }
-  }
 
   private enum ContainerCheckLevel {
     NO_CHECK, FAST_CHECK, FULL_CHECK

@@ -19,14 +19,10 @@
 package org.apache.hadoop.ozone.container.replication;
 
 import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.file.Path;
 import java.security.cert.X509Certificate;
-import java.util.concurrent.CompletableFuture;
 
 import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
-import org.apache.hadoop.hdds.protocol.DatanodeDetails.Port.Name;
 import org.apache.hadoop.ozone.container.keyvalue.KeyValueContainerData;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -50,19 +46,7 @@ public class NullContainerDownloader extends SimpleContainerDownloader {
       KeyValueContainerData preCreated,
       DatanodeDetails datanode
   ) throws IOException {
-    CompletableFuture<Path> result;
-    GrpcReplicationClient grpcReplicationClient =
-        new GrpcReplicationClient(datanode.getIpAddress(),
-            datanode.getPort(Name.REPLICATION).getValue(),
-            workingDirectory, securityConfig, caCert);
 
-    OutputStream nullOutputStream = new OutputStream() {
-      @Override
-      public void write(int i) throws IOException {
-        //
-      }
-    };
-    grpcReplicationClient.download(preCreated, nullOutputStream);
     return preCreated;
   }
 

@@ -1,13 +1,13 @@
 package org.apache.hadoop.ozone.container.replication;
 
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.TimeoutException;
 
-import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails.Port.Name;
@@ -39,7 +39,9 @@ import org.apache.hadoop.test.GenericTestUtils;
 
 import com.google.common.base.Supplier;
 import com.google.common.collect.Maps;
+import org.apache.commons.io.FileUtils;
 import org.apache.ratis.thirdparty.com.google.protobuf.ByteString;
+import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
 
 /**
@@ -48,20 +50,97 @@ import org.junit.Test;
 public class TestReplicationService {
 
   @Test
-  public void test() throws IOException, TimeoutException,
-      InterruptedException {
-    final UUID scmUuid = UUID.randomUUID();
-    //start server
-    ConfigurationSource ozoneConfig = new OzoneConfiguration();
+  public void test() throws Exception {
 
-    final String sourceDnUUID = UUID.randomUUID().toString();
-    final String destDnUUID = UUID.randomUUID().toString();
+    final String scmUuid = "99335668-b0b2-46ff-bd6e-7bc9cc0e1404";
+    final String clusterUuid = "    7001371d-d474-4ae2-bd80-d942b31f8bc9";
+    //start server
+    final Path sourceDir = Paths
+        .get(System.getProperty("user.dir"), "target", "test-data", "source");
+    final Path destDir = Paths
+        .get(System.getProperty("user.dir"), "target", "test-data", "dest");
+    FileUtils.deleteDirectory(sourceDir.toFile());
+    FileUtils.deleteDirectory(destDir.toFile());
+
+    final String sourceDnUUID = "d6979383-5fd5-4fa5-be02-9b39f06d763d";
+    final String destDnUUID = "bb11a0cc-8902-4f07-adae-a853ba891132";
+
+    ReplicationServer replicationServer =
+        initSource(clusterUuid, scmUuid, destDnUUID, sourceDir.toString());
+
+    //start client
+    ContainerSet
+        destinationContainerSet =
+        replicateContainer(scmUuid,
+            sourceDnUUID,
+            replicationServer.getPort(),
+            destDnUUID,
+            destDir);
+
+    GenericTestUtils.waitFor(new Supplier<Boolean>() {
+      @Override
+      public Boolean get() {
+        return destinationContainerSet.getContainer(1L) != null;
+      }
+    }, 1000, 10_000);
+  }
+
+  @NotNull
+  private ContainerSet replicateContainer(
+      String scmUuid,
+      String sourceDnUUID,
+      int port,
+      String destDnUUID,
+      Path destDir
+      ) throws IOException {
+    ContainerSet sourceContainerSet = new ContainerSet();
+
+    OzoneConfiguration clientConfig = new OzoneConfiguration();
+    clientConfig.set("hdds.datanode.dir", destDir.toString());
+    MutableVolumeSet volumeSet =
+        new MutableVolumeSet(destDnUUID, clientConfig);
+
+    DownloadAndImportReplicator replicator = new DownloadAndImportReplicator(
+        clientConfig,
+        () -> scmUuid,
+        sourceContainerSet,
+        new SimpleContainerDownloader(clientConfig, null),
+        volumeSet);
+
+    DatanodeDetails source =
+        DatanodeDetails.newBuilder()
+            .setIpAddress("127.0.0.1")
+            .setUuid(UUID.fromString(sourceDnUUID))
+            .build();
+
+    source.setPort(Name.REPLICATION, port);
+    List<DatanodeDetails> sourceDatanodes = new ArrayList<>();
+    sourceDatanodes.add(source);
+
+    ContainerSet destinationContainerSet = new ContainerSet();
+    ReplicationSupervisor supervisor =
+        new ReplicationSupervisor(destinationContainerSet, replicator, 10);
+    replicator.replicate(new ReplicationTask(1L, sourceDatanodes));
+    return destinationContainerSet;
+  }
+
+  private ReplicationServer initSource(
+      String clusterUuid,
+      String scmUuid,
+      String sourceDnUUID,
+      String sourceDir
+  )
+      throws Exception {
+    OzoneConfiguration ozoneConfig = new OzoneConfiguration();
+    ozoneConfig.set("hdds.datanode.dir", sourceDir);
+
     MutableVolumeSet sourceVolumes =
         new MutableVolumeSet(sourceDnUUID, ozoneConfig);
 
     VolumeChoosingPolicy v = new RoundRobinVolumeChoosingPolicy();
     final HddsVolume volume =
         v.chooseVolume(sourceVolumes.getVolumesList(), 5L);
+    volume.format(clusterUuid);
 
     KeyValueContainerData kvd = new KeyValueContainerData(1L, "/tmp/asd");
     kvd.setState(State.OPEN);
@@ -82,7 +161,7 @@ public class TestReplicationService {
     final ContainerCommandRequestProto containerCommandRequest =
         ContainerCommandRequestProto.newBuilder()
             .setCmdType(Type.WriteChunk)
-            .setDatanodeUuid(destDnUUID)
+            .setDatanodeUuid(sourceDnUUID)
             .setContainerID(kvc.getContainerData().getContainerID())
             .setWriteChunk(WriteChunkRequestProto.newBuilder()
                 .setBlockID(DatanodeBlockID.newBuilder()
@@ -103,7 +182,8 @@ public class TestReplicationService {
                 .build())
             .build();
 
-    handler.handle(containerCommandRequest, kvc, new DispatcherContext.Builder().build());
+    handler.handle(containerCommandRequest, kvc,
+        new DispatcherContext.Builder().build());
 
     HashMap<ContainerType, Handler> handlers = Maps.newHashMap();
     ContainerController controller =
@@ -114,45 +194,14 @@ public class TestReplicationService {
 
     SecurityConfig securityConfig = new SecurityConfig(ozoneConfig);
     ReplicationServer replicationServer =
-        new ReplicationServer(controller, replicationConfig, securityConfig,
+        new ReplicationServer(sourceContainerSet, replicationConfig, securityConfig,
             null);
+
+    kvd.setState(State.CLOSED);
 
     replicationServer.init();
     replicationServer.start();
-
-    //start client
-    OzoneConfiguration clientConfig = new OzoneConfiguration();
-    clientConfig.set("hdds.datanode.dir","tmp/qwe");
-    MutableVolumeSet volumeSet =
-        new MutableVolumeSet(destDnUUID, clientConfig);
-
-    DownloadAndImportReplicator replicator = new DownloadAndImportReplicator(
-        ozoneConfig,
-        () -> scmUuid.toString(),
-        sourceContainerSet,
-        new SimpleContainerDownloader(ozoneConfig, null),
-        volumeSet);
-
-    DatanodeDetails source =
-        DatanodeDetails.newBuilder()
-            .setIpAddress("127.0.0.1")
-            .setUuid(UUID.randomUUID())
-            .build();
-    source.setPort(Name.REPLICATION, replicationServer.getPort());
-    List<DatanodeDetails> sourceDatanodes = new ArrayList<>();
-    sourceDatanodes.add(source);
-
-    ContainerSet destinationContainerSet = new ContainerSet();
-    ReplicationSupervisor supervisor =
-        new ReplicationSupervisor(destinationContainerSet, replicator, 10);
-    replicator.replicate(new ReplicationTask(1L, sourceDatanodes));
-
-    GenericTestUtils.waitFor(new Supplier<Boolean>() {
-      @Override
-      public Boolean get() {
-        return destinationContainerSet.getContainer(1L) != null;
-      }
-    }, 1000, 10_000);
+    return replicationServer;
   }
 
 }

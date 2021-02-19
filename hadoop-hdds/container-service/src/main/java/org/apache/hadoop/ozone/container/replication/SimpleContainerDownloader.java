@@ -19,26 +19,23 @@
 package org.apache.hadoop.ozone.container.replication;
 
 import java.io.IOException;
-import java.io.PipedInputStream;
-import java.io.PipedOutputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
 import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails.Port.Name;
 import org.apache.hadoop.hdds.security.x509.SecurityConfig;
 import org.apache.hadoop.ozone.OzoneConfigKeys;
-import org.apache.hadoop.ozone.container.common.impl.ContainerDataYaml;
 import org.apache.hadoop.ozone.container.keyvalue.KeyValueContainerData;
-import org.apache.hadoop.ozone.container.keyvalue.TarContainerPacker;
+import org.apache.hadoop.ozone.container.stream.StreamingClient;
 
 import com.google.common.annotations.VisibleForTesting;
+import io.netty.channel.Channel;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,7 +55,6 @@ public class SimpleContainerDownloader implements ContainerDownloader {
   protected final Path workingDirectory;
   protected  final SecurityConfig securityConfig;
   protected  final X509Certificate caCert;
-  protected  TarContainerPacker packer = new TarContainerPacker();
 
   public SimpleContainerDownloader(
       ConfigurationSource conf,
@@ -124,50 +120,58 @@ public class SimpleContainerDownloader implements ContainerDownloader {
       KeyValueContainerData preCreated,
       DatanodeDetails datanode
   ) throws IOException {
-    CompletableFuture<Path> result;
-    GrpcReplicationClient grpcReplicationClient =
-        new GrpcReplicationClient(datanode.getIpAddress(),
-            datanode.getPort(Name.REPLICATION).getValue(),
-            workingDirectory, securityConfig, caCert);
+    //    CompletableFuture<Path> result;
+    //
+    try {
+      StreamingClient client =
+          new StreamingClient(datanode.getIpAddress(), datanode.getPort(
+              Name.REPLICATION).getValue(),
+              new ContainerStreamingDestination(preCreated));
+      final Channel channel = client.connect();
+      channel.writeAndFlush(preCreated.getContainerID() + "\n");
+      channel.closeFuture().sync().addListener(f -> {
+        LOG.info("Container " + preCreated.getContainerID()
+            + " is downloaded succesfully");
+      });
+    } catch (Exception ex) {
+      throw new RuntimeException(ex);
+    }
 
-    PipedOutputStream outputStream = new PipedOutputStream();
 
-    grpcReplicationClient.download(preCreated, outputStream);
-    final byte[] descriptor = packer
-        .unpackContainerData(preCreated, new PipedInputStream(outputStream));
+        //parse descriptor
+        //now, we have extracted the container descriptor from the previous
+        //datanode. We can load it and upload it with the current data
+        // (original metadata + current filepath fields)
+        KeyValueContainerData replicated =
+            (KeyValueContainerData) ContainerDataYaml
+                .readContainer(descriptor);
 
-    //parse descriptor
-    //now, we have extracted the container descriptor from the previous
-    //datanode. We can load it and upload it with the current data
-    // (original metadata + current filepath fields)
-    KeyValueContainerData replicated =
-        (KeyValueContainerData) ContainerDataYaml
-            .readContainer(descriptor);
+        KeyValueContainerData updated = new KeyValueContainerData(
+            replicated.getContainerID(),
+            replicated.getLayOutVersion(),
+            replicated.getMaxSize(),
+            replicated.getOriginPipelineId(),
+            replicated.getOriginNodeId());
 
-    KeyValueContainerData updated = new KeyValueContainerData(
-        replicated.getContainerID(),
-        replicated.getLayOutVersion(),
-        replicated.getMaxSize(),
-        replicated.getOriginPipelineId(),
-        replicated.getOriginNodeId());
+        //inherited from the replicated
+        updated
+            .setState(replicated.getState());
+        updated
+            .setContainerDBType(replicated.getContainerDBType());
+        updated
+            .updateBlockCommitSequenceId(replicated
+           .getBlockCommitSequenceId());
+        updated
+            .setSchemaVersion(replicated.getSchemaVersion());
 
-    //inherited from the replicated
-    updated
-        .setState(replicated.getState());
-    updated
-        .setContainerDBType(replicated.getContainerDBType());
-    updated
-        .updateBlockCommitSequenceId(replicated.getBlockCommitSequenceId());
-    updated
-        .setSchemaVersion(replicated.getSchemaVersion());
+        //inherited from the pre-created seed container
+        updated.setMetadataPath(preCreated.getMetadataPath());
+        updated.setDbFile(preCreated.getDbFile());
+        updated.setChunksPath(preCreated.getChunksPath());
+        updated.setVolume(preCreated.getVolume());
 
-    //inherited from the pre-created seed container
-    updated.setMetadataPath(preCreated.getMetadataPath());
-    updated.setDbFile(preCreated.getDbFile());
-    updated.setChunksPath(preCreated.getChunksPath());
-    updated.setVolume(preCreated.getVolume());
-
-    return updated;
+        return updated;
+    return preCreated;
   }
 
   @Override

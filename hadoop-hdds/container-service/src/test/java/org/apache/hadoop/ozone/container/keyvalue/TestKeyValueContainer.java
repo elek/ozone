@@ -19,16 +19,10 @@
 package org.apache.hadoop.ozone.container.keyvalue;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import org.apache.hadoop.conf.StorageUnit;
 import org.apache.hadoop.hdds.client.BlockID;
@@ -55,7 +49,6 @@ import static org.apache.ratis.util.Preconditions.assertTrue;
 import org.junit.Assert;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 import org.junit.Before;
 import org.junit.Rule;
@@ -180,35 +173,6 @@ public class TestKeyValueContainer {
         ContainerProtos.ContainerDataProto.State.CLOSED);
   }
 
-  @Test
-  public void concurrentExport() throws Exception {
-    createContainer();
-    populate(100);
-    closeContainer();
-
-    AtomicReference<String> failed = new AtomicReference<>();
-
-    TarContainerPacker packer = new TarContainerPacker();
-    List<Thread> threads = IntStream.range(0, 20)
-        .mapToObj(i -> new Thread(() -> {
-          try {
-            File file = folder.newFile("concurrent" + i + ".tar.gz");
-            try (OutputStream out = new FileOutputStream(file)) {
-              keyValueContainer.exportContainerData(out, packer);
-            }
-          } catch (Exception e) {
-            failed.compareAndSet(null, e.getMessage());
-          }
-        }))
-        .collect(Collectors.toList());
-
-    threads.forEach(Thread::start);
-    for (Thread thread : threads) {
-      thread.join();
-    }
-
-    assertNull(failed.get());
-  }
 
   @Test
   public void testDuplicateContainer() throws Exception {
