@@ -251,9 +251,9 @@ public class LeaderAppendLogEntryGenerator extends BaseAppendLogGenerator
         RaftPeerId.getRaftPeerId(serverId);
 
     RaftGroup group = RaftGroup.valueOf(groupId,
-        RaftPeer.newBuilder()
-            .setId(serverId)
+        RaftPeer.newBuilder().setId(serverId)
             .setAddress(serverAddress)
+            .setAdminAddress(adminAddress)
             .build(),
         RaftPeer.newBuilder()
             .setId(RaftPeerId.valueOf(FAKE_FOLLOWER_ID1))

@@ -42,8 +42,14 @@ public class BaseAppendLogGenerator extends BaseFreonGenerator {
   @SuppressWarnings("checkstyle:VisibilityModifier")
   @Option(names = {"-c", "--server-address"},
       description = "Host:port of the Ratis server",
-      defaultValue = "localhost:9858")
-  protected String serverAddress = "localhost:9858";
+      defaultValue = "localhost:9856")
+  protected String serverAddress = "localhost:9856";
+
+  @Option(names = {"-a", "--admin-address"},
+      description = "Host:port of the Ratis server",
+      defaultValue = "localhost:9857")
+  protected String adminAddress = "localhost:9857";
+
 
   @SuppressWarnings("checkstyle:VisibilityModifier")
   @Option(names = {"--inflight-limit"},
