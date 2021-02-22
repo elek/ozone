@@ -93,7 +93,7 @@ public class TestReplicationService {
       String destDnUUID,
       Path destDir
       ) throws IOException {
-    ContainerSet sourceContainerSet = new ContainerSet();
+    ContainerSet destinationContainerSet = new ContainerSet();
 
     OzoneConfiguration clientConfig = new OzoneConfiguration();
     clientConfig.set("hdds.datanode.dir", destDir.toString());
@@ -103,7 +103,7 @@ public class TestReplicationService {
     DownloadAndImportReplicator replicator = new DownloadAndImportReplicator(
         clientConfig,
         () -> scmUuid,
-        sourceContainerSet,
+        destinationContainerSet,
         new SimpleContainerDownloader(clientConfig, null),
         volumeSet);
 
@@ -117,7 +117,6 @@ public class TestReplicationService {
     List<DatanodeDetails> sourceDatanodes = new ArrayList<>();
     sourceDatanodes.add(source);
 
-    ContainerSet destinationContainerSet = new ContainerSet();
     ReplicationSupervisor supervisor =
         new ReplicationSupervisor(destinationContainerSet, replicator, 10);
     replicator.replicate(new ReplicationTask(1L, sourceDatanodes));

@@ -17,8 +17,13 @@ import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.stream.ChunkedWriteHandler;
 import io.netty.util.CharsetUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class StreamingServer {
+
+    private static final Logger LOG =
+        LoggerFactory.getLogger(StreamingServer.class);
 
     private int port;
 
@@ -60,7 +65,7 @@ public class StreamingServer {
         final InetSocketAddress socketAddress =
             (InetSocketAddress) f.channel().localAddress();
         port = socketAddress.getPort();
-
+        LOG.info("Started streaming server on " + port);
     }
 
     public void stop() {

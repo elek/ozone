@@ -38,7 +38,7 @@ public class DirstreamServerHandler extends ChannelInboundHandlerAdapter {
             } else {
                 long fileSize = Files.size(file);
                 future.addListener(f -> ctx.writeAndFlush(
-                    fileSize + " " + file.getFileName().toString() + "\n"))
+                    fileSize + " " + name + "\n"))
                     .addListener(f -> ctx.writeAndFlush(
                         new DefaultFileRegion(file.toFile(), 0, fileSize)));
 

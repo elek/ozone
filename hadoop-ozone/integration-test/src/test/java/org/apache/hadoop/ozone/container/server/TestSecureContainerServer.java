@@ -64,8 +64,6 @@ import org.apache.hadoop.ozone.container.common.transport.server.ratis.XceiverSe
 import org.apache.hadoop.ozone.container.common.volume.MutableVolumeSet;
 import org.apache.hadoop.ozone.container.common.volume.VolumeSet;
 import org.apache.hadoop.ozone.container.ozoneimpl.ContainerController;
-import org.apache.hadoop.ozone.container.replication.GrpcReplicationService;
-import org.apache.hadoop.ozone.container.replication.OnDemandContainerReplicationSource;
 import org.apache.hadoop.ozone.security.OzoneBlockTokenSecretManager;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.test.GenericTestUtils;
@@ -107,12 +105,6 @@ public class TestSecureContainerServer {
       = GenericTestUtils.getTestDir("dfs").getAbsolutePath() + File.separator;
   private static final OzoneConfiguration CONF = new OzoneConfiguration();
   private static CertificateClientTestImpl caClient;
-
-  private GrpcReplicationService createReplicationService(
-      ContainerController containerController) {
-    return new GrpcReplicationService(
-        new OnDemandContainerReplicationSource(containerController));
-  }
 
   @BeforeClass
   static public void setup() throws Exception {

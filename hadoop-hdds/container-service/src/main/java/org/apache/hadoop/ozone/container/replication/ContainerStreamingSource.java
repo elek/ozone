@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,16 +33,34 @@ public class ContainerStreamingSource implements StreamingSource {
     if (container == null) {
       throw new IllegalArgumentException("No such container " + containerId);
     }
-    final File dbPath =
-        container.getContainerData().getContainerDBFile();
     try {
+
+      final File dbPath =
+          container.getContainerData().getContainerDBFile();
+
       final List<Path> dbFiles =
           Files.list(dbPath.toPath()).collect(Collectors.toList());
       for (Path dbFile : dbFiles) {
         filesToStream.put("DB/" + dbFile.getFileName().toString(), dbFile);
       }
+
+      filesToStream.put("container.yaml",
+          container.getContainerData().getContainerFile().toPath());
+
+      final String dataPath =
+          container.getContainerData().getContainerPath();
+      final List<Path> dataFiles =
+          Files.list(Paths.get(dataPath)).collect(Collectors.toList());
+      for (Path dataFile : dataFiles) {
+        if (!Files.isDirectory(dataFile)) {
+          filesToStream
+              .put("DATA/" + dataFile.getFileName().toString(), dataFile);
+        }
+      }
+
     } catch (IOException e) {
-      e.printStackTrace();
+      throw new RuntimeException("Couldn't stream countainer " + containerId,
+          e);
     }
     return filesToStream;
   }

@@ -16,11 +16,19 @@ public class ContainerStreamingDestination implements StreamingDestination {
 
   @Override
   public Path mapToDestination(String name) {
+    if (name.equals("container.yaml")) {
+      return Paths.get(
+          containerData.getContainerFile().getAbsolutePath() + ".original");
+    }
+
     String[] parts = name.split("/", 2);
     if (parts[0].equals("DB")) {
-      return Paths.get(containerData.getContainerDBFile().getAbsolutePath()
-          , parts[1]);
+      return Paths.get(containerData.getContainerDBFile().getAbsolutePath(),
+          parts[1]);
+    } else if (parts[0].equals("DATA")) {
+      return Paths.get(containerData.getContainerPath(),
+          parts[1]);
     }
-    throw new IllegalArgumentException("Unknown container part:" + parts[0]);
+    throw new IllegalArgumentException("Unknown container part: " + parts[0]);
   }
 }

@@ -18,6 +18,7 @@
 
 package org.apache.hadoop.ozone.container.replication;
 
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -31,6 +32,7 @@ import org.apache.hadoop.hdds.protocol.DatanodeDetails;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails.Port.Name;
 import org.apache.hadoop.hdds.security.x509.SecurityConfig;
 import org.apache.hadoop.ozone.OzoneConfigKeys;
+import org.apache.hadoop.ozone.container.common.impl.ContainerDataYaml;
 import org.apache.hadoop.ozone.container.keyvalue.KeyValueContainerData;
 import org.apache.hadoop.ozone.container.stream.StreamingClient;
 
@@ -137,41 +139,41 @@ public class SimpleContainerDownloader implements ContainerDownloader {
       throw new RuntimeException(ex);
     }
 
+    try (FileInputStream fis = new FileInputStream(
+        preCreated.getContainerFile().toString() + ".original")) {
+      //parse descriptor
+      //now, we have extracted the container descriptor from the previous
+      //datanode. We can load it and upload it with the current data
+      // (original metadata + current filepath fields)
+      KeyValueContainerData replicated =
+          (KeyValueContainerData) ContainerDataYaml.readContainer(fis);
 
-        //parse descriptor
-        //now, we have extracted the container descriptor from the previous
-        //datanode. We can load it and upload it with the current data
-        // (original metadata + current filepath fields)
-        KeyValueContainerData replicated =
-            (KeyValueContainerData) ContainerDataYaml
-                .readContainer(descriptor);
+      KeyValueContainerData updated = new KeyValueContainerData(
+          replicated.getContainerID(),
+          replicated.getLayOutVersion(),
+          replicated.getMaxSize(),
+          replicated.getOriginPipelineId(),
+          replicated.getOriginNodeId());
 
-        KeyValueContainerData updated = new KeyValueContainerData(
-            replicated.getContainerID(),
-            replicated.getLayOutVersion(),
-            replicated.getMaxSize(),
-            replicated.getOriginPipelineId(),
-            replicated.getOriginNodeId());
+      //inherited from the replicated
+      updated
+          .setState(replicated.getState());
+      updated
+          .setContainerDBType(replicated.getContainerDBType());
+      updated
+          .updateBlockCommitSequenceId(replicated
+          .getBlockCommitSequenceId());
+      updated
+          .setSchemaVersion(replicated.getSchemaVersion());
 
-        //inherited from the replicated
-        updated
-            .setState(replicated.getState());
-        updated
-            .setContainerDBType(replicated.getContainerDBType());
-        updated
-            .updateBlockCommitSequenceId(replicated
-           .getBlockCommitSequenceId());
-        updated
-            .setSchemaVersion(replicated.getSchemaVersion());
+      //inherited from the pre-created seed container
+      updated.setMetadataPath(preCreated.getMetadataPath());
+      updated.setDbFile(preCreated.getDbFile());
+      updated.setChunksPath(preCreated.getChunksPath());
+      updated.setVolume(preCreated.getVolume());
 
-        //inherited from the pre-created seed container
-        updated.setMetadataPath(preCreated.getMetadataPath());
-        updated.setDbFile(preCreated.getDbFile());
-        updated.setChunksPath(preCreated.getChunksPath());
-        updated.setVolume(preCreated.getVolume());
-
-        return updated;
-    return preCreated;
+      return updated;
+    }
   }
 
   @Override
