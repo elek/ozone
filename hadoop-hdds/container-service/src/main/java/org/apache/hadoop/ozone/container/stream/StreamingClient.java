@@ -10,8 +10,6 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.string.StringEncoder;
-import io.netty.handler.logging.LogLevel;
-import io.netty.handler.logging.LoggingHandler;
 import io.netty.util.CharsetUtil;
 
 public class StreamingClient {
@@ -41,8 +39,7 @@ public class StreamingClient {
                 @Override
                 public void initChannel(SocketChannel ch) throws Exception {
                     ChannelPipeline p = ch.pipeline();
-                    p.addLast(new LoggingHandler(LogLevel.INFO),
-                        new StringEncoder(CharsetUtil.UTF_8),
+                    p.addLast(new StringEncoder(CharsetUtil.UTF_8),
                         new DirstreamClientHandler(streamingDestination));
                 }
             });
