@@ -74,6 +74,11 @@ public class ClosedContainerReplicator extends BaseFreonGenerator implements
       defaultValue = "false")
   private boolean inMemory;
 
+  @Option(names = {"--container-Id"},
+      description = "Download only the selected container.",
+      defaultValue = "0")
+  private long containerId;
+
   private ReplicationSupervisor supervisor;
 
   private Timer timer;
@@ -105,25 +110,27 @@ public class ClosedContainerReplicator extends BaseFreonGenerator implements
 
     for (ContainerInfo container : containerInfos) {
 
-      final ContainerWithPipeline containerWithPipeline =
-          containerOperationClient
-              .getContainerWithPipeline(container.getContainerID());
+      if (containerId == 0 || containerId == container.getContainerID()) {
+        final ContainerWithPipeline containerWithPipeline =
+            containerOperationClient
+                .getContainerWithPipeline(container.getContainerID());
 
-      if (container.getState() == LifeCycleState.CLOSED) {
+        if (container.getState() == LifeCycleState.CLOSED) {
 
-        final List<DatanodeDetails> datanodesWithContainer =
-            containerWithPipeline.getPipeline().getNodes();
+          final List<DatanodeDetails> datanodesWithContainer =
+              containerWithPipeline.getPipeline().getNodes();
 
-        final List<String> datanodeUUIDs =
-            datanodesWithContainer
-                .stream().map(DatanodeDetails::getUuidString)
-                .collect(Collectors.toList());
+          final List<String> datanodeUUIDs =
+              datanodesWithContainer
+                  .stream().map(DatanodeDetails::getUuidString)
+                  .collect(Collectors.toList());
 
-        //if datanode is specified, replicate only container if it has a
-        //replica.
-        if (datanode.isEmpty() || datanodeUUIDs.contains(datanode)) {
-          replicationTasks.add(new ReplicationTask(container.getContainerID(),
-              datanodesWithContainer));
+          //if datanode is specified, replicate only container if it has a
+          //replica.
+          if (datanode.isEmpty() || datanodeUUIDs.contains(datanode)) {
+            replicationTasks.add(new ReplicationTask(container.getContainerID(),
+                datanodesWithContainer));
+          }
         }
       }
 
