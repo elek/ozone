@@ -108,7 +108,7 @@ public final class OzoneConsts {
 
   public static final String FILE_HASH = "SHA-256";
   public static final String MD5_HASH = "MD5";
-  public final static String CHUNK_OVERWRITE = "OverWriteRequested";
+  public static final String CHUNK_OVERWRITE = "OverWriteRequested";
 
   public static final int CHUNK_SIZE = 1 * 1024 * 1024; // 1 MB
   public static final long KB = 1024L;
@@ -229,6 +229,8 @@ public final class OzoneConsts {
   // The ServiceListJSONServlet context attribute where OzoneManager
   // instance gets stored.
   public static final String OM_CONTEXT_ATTRIBUTE = "ozone.om";
+
+  public static final String SCM_CONTEXT_ATTRIBUTE = "ozone.scm";
 
   private OzoneConsts() {
     // Never Constructed
@@ -392,4 +394,8 @@ public final class OzoneConsts {
   public static final String OM_RATIS_SNAPSHOT_DIR = "snapshot";
 
   public static final long DEFAULT_OM_UPDATE_ID = -1L;  
+
+  // CRL Sequence Id
+  public static final String CRL_SEQUENCE_ID_KEY = "CRL_SEQUENCE_ID";
+
 }

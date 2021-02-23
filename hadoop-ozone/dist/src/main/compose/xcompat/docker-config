@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -15,24 +14,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-COMPOSE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-export COMPOSE_DIR
+OZONE-SITE.XML_hdds.datanode.dir=/data/hdds
+OZONE-SITE.XML_hdds.scm.safemode.min.datanode=3
+OZONE-SITE.XML_ozone.metadata.dirs=/data/metadata
+OZONE-SITE.XML_ozone.om.address=om
+OZONE-SITE.XML_ozone.om.http-address=om:9874
+OZONE-SITE.XML_ozone.recon.address=recon:9891
+OZONE-SITE.XML_ozone.recon.db.dir=/data/metadata/recon
+OZONE-SITE.XML_ozone.replication=3
+OZONE-SITE.XML_ozone.scm.block.client.address=scm
+OZONE-SITE.XML_ozone.scm.client.address=scm
+OZONE-SITE.XML_ozone.scm.container.size=1GB
+OZONE-SITE.XML_ozone.scm.datanode.id.dir=/data
+OZONE-SITE.XML_ozone.scm.names=scm
+OZONE-SITE.XML_ozone.scm.pipeline.owner.container.count=1
+OZONE-SITE.XML_recon.om.snapshot.task.interval.delay=1m
 
-export SECURITY_ENABLED=false
-export OM_SERVICE_ID="id1"
-
-# shellcheck source=/dev/null
-source "$COMPOSE_DIR/../testlib.sh"
-
-start_docker_env
-
-execute_robot_test scm s3
-
-execute_robot_test scm freon
-
-execute_robot_test scm basic/links.robot
-
-stop_docker_env
-
-generate_report
-
+no_proxy=om,recon,scm,s3g,kdc,localhost,127.0.0.1

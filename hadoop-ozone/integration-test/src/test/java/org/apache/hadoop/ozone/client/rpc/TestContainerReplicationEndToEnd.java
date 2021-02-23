@@ -17,17 +17,8 @@
 
 package org.apache.hadoop.ozone.client.rpc;
 
-import java.io.File;
-import java.io.IOException;
-import java.time.Duration;
-import java.util.HashMap;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Predicate;
-
 import org.apache.hadoop.hdds.client.ReplicationFactor;
 import org.apache.hadoop.hdds.client.ReplicationType;
-import org.apache.hadoop.hdds.conf.DatanodeRatisServerConfig;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos;
@@ -46,19 +37,30 @@ import org.apache.hadoop.ozone.client.OzoneClient;
 import org.apache.hadoop.ozone.client.OzoneClientFactory;
 import org.apache.hadoop.ozone.client.io.KeyOutputStream;
 import org.apache.hadoop.ozone.client.io.OzoneOutputStream;
+import org.apache.hadoop.hdds.conf.DatanodeRatisServerConfig;
 import org.apache.hadoop.ozone.container.TestHelper;
+
 import org.apache.hadoop.ozone.om.helpers.OmKeyLocationInfo;
 import org.apache.hadoop.test.GenericTestUtils;
-
-import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_CONTAINER_REPORT_INTERVAL;
-import static org.apache.hadoop.hdds.scm.ScmConfigKeys.OZONE_DATANODE_PIPELINE_LIMIT;
-import static org.apache.hadoop.hdds.scm.ScmConfigKeys.OZONE_SCM_PIPELINE_DESTROY_TIMEOUT;
-import static org.apache.hadoop.hdds.scm.ScmConfigKeys.OZONE_SCM_STALENODE_INTERVAL;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_CONTAINER_REPORT_INTERVAL;
+import static org.apache.hadoop.hdds.scm.ScmConfigKeys.OZONE_SCM_PIPELINE_DESTROY_TIMEOUT;
+import static org.apache.hadoop.hdds.scm.ScmConfigKeys.OZONE_SCM_STALENODE_INTERVAL;
+import static org.apache.hadoop.hdds.scm.ScmConfigKeys.OZONE_DATANODE_PIPELINE_LIMIT;
 
 /**
  * Tests delete key operation with a slow follower in the datanode
@@ -146,7 +148,7 @@ public class TestContainerReplicationEndToEnd {
         objectStore.getVolume(volumeName).getBucket(bucketName)
             .createKey(keyName, 0, ReplicationType.RATIS,
                 ReplicationFactor.THREE, new HashMap<>());
-    byte[] testData = "ratis".getBytes();
+    byte[] testData = "ratis".getBytes(UTF_8);
     // First write and flush creates a container in the datanode
     key.write(testData);
     key.flush();
@@ -179,7 +181,6 @@ public class TestContainerReplicationEndToEnd {
     // wait for container to move to OPEN state in SCM
     Thread.sleep(2 * containerReportInterval);
     DatanodeDetails oldReplicaNode = pipeline.getFirstNode();
-
     // now move the container to the closed on the datanode.
     XceiverClientSpi xceiverClient =
         xceiverClientManager.acquireClient(pipeline);
@@ -191,16 +192,13 @@ public class TestContainerReplicationEndToEnd {
     request.setCloseContainer(
         ContainerProtos.CloseContainerRequestProto.getDefaultInstance());
     xceiverClient.sendCommand(request.build());
-
     // wait for container to move to closed state in SCM
     Thread.sleep(2 * containerReportInterval);
     Assert.assertTrue(
         cluster.getStorageContainerManager().getContainerInfo(containerID)
             .getState() == HddsProtos.LifeCycleState.CLOSED);
-
     // shutdown the replica node
     cluster.shutdownHddsDatanode(oldReplicaNode);
-
     // now the container is under replicated and will be moved to a different dn
     HddsDatanodeService dnService = null;
 
@@ -215,9 +213,13 @@ public class TestContainerReplicationEndToEnd {
     Assert.assertNotNull(dnService);
     final HddsDatanodeService newReplicaNode = dnService;
     // wait for the container to get replicated
-    GenericTestUtils.waitFor(() -> newReplicaNode.getDatanodeStateMachine().getContainer()
-        .getContainerSet().getContainer(containerID) != null, 500, 100000);
-
+    GenericTestUtils.waitFor(() -> {
+      return newReplicaNode.getDatanodeStateMachine().getContainer()
+          .getContainerSet().getContainer(containerID) != null;
+    }, 500, 100000);
+    Assert.assertTrue(newReplicaNode.getDatanodeStateMachine().getContainer()
+        .getContainerSet().getContainer(containerID).getContainerData()
+        .getBlockCommitSequenceId() > 0);
     // wait for SCM to update the replica Map
     Thread.sleep(5 * containerReportInterval);
     // now shutdown the other two dns of the original pipeline and try reading

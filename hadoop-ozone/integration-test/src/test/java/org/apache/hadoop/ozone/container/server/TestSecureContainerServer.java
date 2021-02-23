@@ -107,7 +107,7 @@ public class TestSecureContainerServer {
   private static CertificateClientTestImpl caClient;
 
   @BeforeClass
-  static public void setup() throws Exception {
+  public static void setup() throws Exception {
     DefaultMetricsSystem.setMiniClusterMode(true);
     CONF.set(HddsConfigKeys.HDDS_METADATA_DIR_NAME, TEST_DIR);
     CONF.setBoolean(OZONE_SECURITY_ENABLED_KEY, true);
@@ -123,9 +123,6 @@ public class TestSecureContainerServer {
   @Test
   public void testClientServer() throws Exception {
     DatanodeDetails dd = MockDatanodeDetails.randomDatanodeDetails();
-    ContainerSet containerSet = new ContainerSet();
-    ContainerController controller = new ContainerController(
-        containerSet, null);
     HddsDispatcher hddsDispatcher = createDispatcher(dd,
         UUID.randomUUID(), CONF);
     runTestClientServer(1, (pipeline, conf) -> conf
