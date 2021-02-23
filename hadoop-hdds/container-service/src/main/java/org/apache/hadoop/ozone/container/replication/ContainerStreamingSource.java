@@ -47,16 +47,15 @@ public class ContainerStreamingSource implements StreamingSource {
       filesToStream.put("container.yaml",
           container.getContainerData().getContainerFile().toPath());
 
-      final String dataPath =
-          container.getContainerData().getContainerPath();
-      final List<Path> dataFiles =
-          Files.list(Paths.get(dataPath)).collect(Collectors.toList());
-      for (Path dataFile : dataFiles) {
-        if (!Files.isDirectory(dataFile)) {
-          filesToStream
-              .put("DATA/" + dataFile.getFileName().toString(), dataFile);
-        }
-      }
+      final Path dataPath =
+          Paths.get(container.getContainerData().getChunksPath());
+
+      Files.walk(dataPath)
+          .filter(Files::isRegularFile)
+          .forEach(path -> {
+            filesToStream
+                .put("DATA/" + dataPath.relativize(path), path);
+          });
 
     } catch (IOException e) {
       throw new RuntimeException("Couldn't stream countainer " + containerId,

@@ -42,7 +42,6 @@ public class DirstreamClientHandler extends ChannelInboundHandlerAdapter {
                 buffer.readBytes(1);
                 String[] parts = currentFileName.toString().split(" ", 2);
                 remaining = Long.parseLong(parts[0]);
-                System.out.println("Starting to write to " + parts[1]);
                 Path destFilePath = destination.mapToDestination(parts[1]);
                 Files.createDirectories(destFilePath.getParent());
                 this.destFile =

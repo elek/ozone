@@ -23,7 +23,8 @@ public class DirstreamServerHandler extends ChannelInboundHandlerAdapter {
         throws Exception {
         ChannelFuture future = null;
 
-        for (Map.Entry<String, Path> entries : source.getFilesToStream("1")
+        for (Map.Entry<String, Path> entries : source
+            .getFilesToStream((String) msg)
             .entrySet()) {
             Path file = entries.getValue();
             String name = entries.getKey();

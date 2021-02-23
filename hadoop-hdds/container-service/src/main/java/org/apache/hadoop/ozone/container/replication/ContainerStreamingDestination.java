@@ -26,7 +26,7 @@ public class ContainerStreamingDestination implements StreamingDestination {
       return Paths.get(containerData.getContainerDBFile().getAbsolutePath(),
           parts[1]);
     } else if (parts[0].equals("DATA")) {
-      return Paths.get(containerData.getContainerPath(),
+      return Paths.get(containerData.getChunksPath(),
           parts[1]);
     }
     throw new IllegalArgumentException("Unknown container part: " + parts[0]);

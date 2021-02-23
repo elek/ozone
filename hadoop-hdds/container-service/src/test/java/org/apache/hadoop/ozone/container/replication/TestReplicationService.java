@@ -1,6 +1,7 @@
 package org.apache.hadoop.ozone.container.replication;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -42,6 +43,7 @@ import com.google.common.collect.Maps;
 import org.apache.commons.io.FileUtils;
 import org.apache.ratis.thirdparty.com.google.protobuf.ByteString;
 import org.jetbrains.annotations.NotNull;
+import org.junit.Assert;
 import org.junit.Test;
 
 /**
@@ -80,9 +82,14 @@ public class TestReplicationService {
     GenericTestUtils.waitFor(new Supplier<Boolean>() {
       @Override
       public Boolean get() {
-        return destinationContainerSet.getContainer(1L) != null;
+        return destinationContainerSet.getContainer(2L) != null;
       }
     }, 1000, 10_000);
+
+    final Path firstBlockFile = destDir.resolve(
+        "hdds/" + scmUuid + "/current/containerDir0/" + 2L + "/chunks/1.block");
+    Assert.assertTrue("Block files is missing " + firstBlockFile,
+        Files.exists(firstBlockFile));
   }
 
   @NotNull
@@ -119,7 +126,7 @@ public class TestReplicationService {
 
     ReplicationSupervisor supervisor =
         new ReplicationSupervisor(destinationContainerSet, replicator, 10);
-    replicator.replicate(new ReplicationTask(1L, sourceDatanodes));
+    replicator.replicate(new ReplicationTask(2L, sourceDatanodes));
     return destinationContainerSet;
   }
 
@@ -141,7 +148,7 @@ public class TestReplicationService {
         v.chooseVolume(sourceVolumes.getVolumesList(), 5L);
     volume.format(clusterUuid);
 
-    KeyValueContainerData kvd = new KeyValueContainerData(1L, "/tmp/asd");
+    KeyValueContainerData kvd = new KeyValueContainerData(2L, "/tmp/asd");
     kvd.setState(State.OPEN);
     kvd.assignToVolume(scmUuid.toString(), volume);
     kvd.setSchemaVersion(OzoneConsts.SCHEMA_V2);
