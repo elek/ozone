@@ -357,9 +357,19 @@ public class KeyValueContainer implements Container<KeyValueContainerData> {
     }
   }
 
+  public void release() throws StorageContainerException {
+    writeLock();
+    try {
+      compactDB();
+      BlockUtils.removeDB(containerData, config);
+    } finally {
+      writeUnlock();
+    }
+  }
+
   private void compactDB() throws StorageContainerException {
     try {
-      try(ReferenceCountedDB db = BlockUtils.getDB(containerData, config)) {
+      try (ReferenceCountedDB db = BlockUtils.getDB(containerData, config)) {
         db.getStore().compactDB();
       }
     } catch (StorageContainerException ex) {
