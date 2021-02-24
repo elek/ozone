@@ -3,7 +3,7 @@ package org.apache.hadoop.ozone.container.stream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.channels.FileChannel;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -38,7 +38,7 @@ public class DirstreamClientHandler extends ChannelInboundHandlerAdapter {
             if (eolPosition > 0) {
                 headerMode = false;
                 currentFileName.append(buffer.readBytes(eolPosition)
-                    .toString(Charset.defaultCharset()));
+                    .toString(StandardCharsets.UTF_8));
                 buffer.readBytes(1);
                 String[] parts = currentFileName.toString().split(" ", 2);
                 remaining = Long.parseLong(parts[0]);
@@ -49,7 +49,7 @@ public class DirstreamClientHandler extends ChannelInboundHandlerAdapter {
                 destFileChannel = this.destFile.getChannel();
             } else {
                 currentFileName
-                    .append(buffer.toString(Charset.defaultCharset()));
+                    .append(buffer.toString(StandardCharsets.UTF_8));
             }
         }
         if (!headerMode) {
