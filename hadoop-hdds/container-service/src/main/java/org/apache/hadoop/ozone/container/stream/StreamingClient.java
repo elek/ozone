@@ -19,7 +19,6 @@ public class StreamingClient {
     private ChannelFuture f;
     private int port;
     private String host;
-    private StreamingDestination streamingDestination;
 
     public StreamingClient(
         String host,
@@ -28,7 +27,6 @@ public class StreamingClient {
     ) throws InterruptedException {
         this.port = port;
         this.host = host;
-        this.streamingDestination = streamingDestination;
 
         group = new NioEventLoopGroup();
 

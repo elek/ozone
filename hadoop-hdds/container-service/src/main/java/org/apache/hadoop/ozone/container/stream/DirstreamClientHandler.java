@@ -62,6 +62,8 @@ public class DirstreamClientHandler extends ChannelInboundHandlerAdapter {
                 headerMode = true;
                 if (buffer.readableBytes() > 0) {
                     channelRead(ctx, buffer);
+                } else {
+                    buffer.release();
                 }
             }
         }
