@@ -48,7 +48,6 @@ import org.apache.hadoop.ozone.container.ozoneimpl.OzoneContainer;
 import org.apache.hadoop.ozone.container.replication.ContainerReplicator;
 import org.apache.hadoop.ozone.container.replication.DownloadAndImportReplicator;
 import org.apache.hadoop.ozone.container.replication.ReplicationSupervisor;
-import org.apache.hadoop.ozone.container.replication.SimpleContainerDownloader;
 import org.apache.hadoop.ozone.protocol.commands.SCMCommand;
 import org.apache.hadoop.util.JvmPauseMonitor;
 import org.apache.hadoop.util.Time;
@@ -128,8 +127,6 @@ public class DatanodeStateMachine implements Closeable {
         new DownloadAndImportReplicator(conf,
             () -> container.getScmId(),
             container.getContainerSet(),
-            new SimpleContainerDownloader(conf,
-                dnCertClient != null ? dnCertClient.getCACertificate() : null),
             container.getVolumeSet());
 
     supervisor =

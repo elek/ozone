@@ -39,12 +39,9 @@ import org.apache.hadoop.hdfs.server.datanode.StorageLocation;
 import org.apache.hadoop.ozone.container.common.impl.ContainerSet;
 import org.apache.hadoop.ozone.container.common.volume.MutableVolumeSet;
 import org.apache.hadoop.ozone.container.replication.ContainerReplicator;
-import org.apache.hadoop.ozone.container.replication.DownloadAndDiscardReplicator;
 import org.apache.hadoop.ozone.container.replication.DownloadAndImportReplicator;
-import org.apache.hadoop.ozone.container.replication.NullContainerDownloader;
 import org.apache.hadoop.ozone.container.replication.ReplicationSupervisor;
 import org.apache.hadoop.ozone.container.replication.ReplicationTask;
-import org.apache.hadoop.ozone.container.replication.SimpleContainerDownloader;
 
 import com.codahale.metrics.Timer;
 import org.jetbrains.annotations.NotNull;
@@ -67,12 +64,6 @@ public class ClosedContainerReplicator extends BaseFreonGenerator implements
       description = "Replicate only containers on this specific datanode.",
       defaultValue = "")
   private String datanode;
-
-  @Option(names = {"--in-memory"},
-      description = "Download data only to the memory and skip the import / "
-          + "persist part.",
-      defaultValue = "false")
-  private boolean inMemory;
 
   @Option(names = {"--container-Id"},
       description = "Download only the selected container.",
@@ -181,23 +172,12 @@ public class ClosedContainerReplicator extends BaseFreonGenerator implements
 
     final UUID scmId = UUID.randomUUID();
     ContainerReplicator replicator;
-    if (inMemory) {
-      replicator = new DownloadAndDiscardReplicator(
+
+    replicator = new DownloadAndImportReplicator(
           conf,
           () -> scmId.toString(),
           containerSet,
-          new NullContainerDownloader(conf, null),
           volumeSet);
-
-    } else {
-      replicator = new DownloadAndImportReplicator(
-          conf,
-          () -> scmId.toString(),
-          containerSet,
-          new SimpleContainerDownloader(conf, null),
-          volumeSet);
-
-    }
     supervisor = new ReplicationSupervisor(containerSet, replicator, 10);
   }
 

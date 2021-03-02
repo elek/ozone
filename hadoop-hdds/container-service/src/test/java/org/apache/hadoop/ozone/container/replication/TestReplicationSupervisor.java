@@ -19,25 +19,20 @@
 package org.apache.hadoop.ozone.container.replication;
 
 import javax.annotation.Nonnull;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.AbstractExecutorService;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
-import org.apache.hadoop.hdds.conf.InMemoryConfiguration;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.ozone.container.common.impl.ChunkLayOutVersion;
 import org.apache.hadoop.ozone.container.common.impl.ContainerSet;
 import org.apache.hadoop.ozone.container.keyvalue.ChunkLayoutTestInfo;
 import org.apache.hadoop.ozone.container.keyvalue.KeyValueContainer;
 import org.apache.hadoop.ozone.container.keyvalue.KeyValueContainerData;
-import org.apache.hadoop.test.GenericTestUtils;
 
 import static com.google.common.util.concurrent.MoreExecutors.newDirectExecutorService;
 import static java.util.Collections.emptyList;
@@ -47,7 +42,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import org.mockito.Mockito;
 
 /**
  * Test the replication supervisor.
@@ -177,33 +171,6 @@ public class TestReplicationSupervisor {
     }
   }
 
-  @Test
-  public void testDownloadAndImportReplicatorFailure() {
-    ReplicationSupervisor supervisor =
-        new ReplicationSupervisor(set, mutableReplicator,
-            newDirectExecutorService());
-
-    // Mock to fetch an exception in the importContainer method.
-    SimpleContainerDownloader moc =
-        Mockito.mock(SimpleContainerDownloader.class);
-    CompletableFuture<Path> res = new CompletableFuture<>();
-    res.complete(Paths.get("file:/tmp/no-such-file"));
-
-    ContainerReplicator replicatorFactory =
-        new DownloadAndImportReplicator(new InMemoryConfiguration(),
-            () -> "", set, moc, null);
-
-    replicatorRef.set(replicatorFactory);
-
-    GenericTestUtils.LogCapturer logCapturer = GenericTestUtils.LogCapturer
-        .captureLogs(DownloadAndImportReplicator.LOG);
-
-    supervisor.addTask(new ReplicationTask(1L, emptyList()));
-    Assert.assertEquals(1, supervisor.getReplicationFailureCount());
-    Assert.assertEquals(0, supervisor.getReplicationSuccessCount());
-    Assert.assertTrue(logCapturer.getOutput()
-        .contains("Container 1 replication was unsuccessful."));
-  }
 
   private ReplicationSupervisor supervisorWithSuccessfulReplicator() {
     return supervisorWith(FakeReplicator::new, newDirectExecutorService());

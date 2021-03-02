@@ -17,14 +17,19 @@
  */
 package org.apache.hadoop.ozone.container.replication;
 
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Supplier;
 
 import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.conf.StorageUnit;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
+import org.apache.hadoop.hdds.protocol.DatanodeDetails.Port.Name;
 import org.apache.hadoop.hdds.scm.ScmConfigKeys;
 import org.apache.hadoop.ozone.container.common.impl.ChunkLayOutVersion;
+import org.apache.hadoop.ozone.container.common.impl.ContainerDataYaml;
 import org.apache.hadoop.ozone.container.common.impl.ContainerSet;
 import org.apache.hadoop.ozone.container.common.interfaces.VolumeChoosingPolicy;
 import org.apache.hadoop.ozone.container.common.volume.HddsVolume;
@@ -34,7 +39,9 @@ import org.apache.hadoop.ozone.container.keyvalue.KeyValueContainer;
 import org.apache.hadoop.ozone.container.keyvalue.KeyValueContainerData;
 import org.apache.hadoop.ozone.container.keyvalue.helpers.KeyValueContainerUtil;
 import org.apache.hadoop.ozone.container.replication.ReplicationTask.Status;
+import org.apache.hadoop.ozone.container.stream.StreamingClient;
 
+import io.netty.channel.Channel;
 import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_DATANODE_VOLUME_CHOOSING_POLICY;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,8 +59,6 @@ public class DownloadAndImportReplicator implements ContainerReplicator {
 
   private final ContainerSet containerSet;
 
-  protected final ContainerDownloader downloader;
-
   protected final ConfigurationSource config;
 
   protected VolumeChoosingPolicy volumeChoosingPolicy;
@@ -66,11 +71,9 @@ public class DownloadAndImportReplicator implements ContainerReplicator {
       ConfigurationSource config,
       Supplier<String> scmId,
       ContainerSet containerSet,
-      ContainerDownloader downloader,
       VolumeSet volumeSet
   ) {
     this.containerSet = containerSet;
-    this.downloader = downloader;
     this.config = config;
     this.scmId = scmId;
     this.volumeSet = volumeSet;
@@ -94,7 +97,6 @@ public class DownloadAndImportReplicator implements ContainerReplicator {
 
   }
 
-
   @Override
   public void replicate(ReplicationTask task) {
     long containerID = task.getContainerId();
@@ -117,7 +119,6 @@ public class DownloadAndImportReplicator implements ContainerReplicator {
           new KeyValueContainerData(containerID,
               ChunkLayOutVersion.FILE_PER_BLOCK, maxContainerSize, "", "");
 
-
       //choose a volume
       final HddsVolume volume = volumeChoosingPolicy
           .chooseVolume(volumeSet.getVolumesList(), maxContainerSize);
@@ -125,32 +126,91 @@ public class DownloadAndImportReplicator implements ContainerReplicator {
       //fill the path fields
       containerData.assignToVolume(scmId.get(), volume);
 
+      Collections.shuffle(sourceDatanodes);
+
       //download data
-      final KeyValueContainerData loadedContainerData =
-          downloader
-              .getContainerDataFromReplicas(containerData, sourceDatanodes);
+      final DatanodeDetails datanode = sourceDatanodes.get(0);
 
-      LOG.info("Container {} is downloaded, starting to import.",
-          containerID);
-
-      //write out container descriptor
-      KeyValueContainer keyValueContainer =
-          new KeyValueContainer(loadedContainerData, config);
-
-      //rewriting the yaml file with new checksum calculation.
-      keyValueContainer.update(loadedContainerData.getMetadata(), true);
-
-      //fill in memory stat counter (keycount, byte usage)
-      KeyValueContainerUtil.parseKVContainerData(loadedContainerData, config);
-
-      //load container
-      containerSet.addContainer(keyValueContainer);
-
-      LOG.info("Container {} is replicated successfully", containerID);
-      task.setStatus(Status.DONE);
-    } catch (Exception e) {
-      LOG.error("Container {} replication was unsuccessful.", containerID, e);
+      try (StreamingClient client =
+          new StreamingClient(datanode.getIpAddress(), datanode.getPort(
+              Name.REPLICATION).getValue(),
+              new ContainerStreamingDestination(containerData))) {
+        final Channel channel = client.connect();
+        channel.writeAndFlush(containerData.getContainerID() + "\n");
+        channel.closeFuture().sync().addListener(f -> {
+          LOG.info("Container " + containerData.getContainerID()
+              + " is downloaded succesfully");
+          KeyValueContainerData loadedContainerData =
+              updateContainerData(containerData);
+          LOG.info("Container {} is downloaded, starting to import.",
+              containerID);
+          importContainer(loadedContainerData);
+          LOG.info("Container {} is replicated successfully", containerID);
+          task.setStatus(Status.DONE);
+        });
+      }
+    } catch (Exception ex) {
+      LOG.error("Error on replicating container " + containerID, ex);
       task.setStatus(Status.FAILED);
+    }
+  }
+
+  private void importContainer(
+      KeyValueContainerData loadedContainerData
+  ) throws IOException {
+
+    //write out container descriptor
+    KeyValueContainer keyValueContainer =
+        new KeyValueContainer(loadedContainerData, config);
+
+    //rewriting the yaml file with new checksum calculation.
+    keyValueContainer.update(loadedContainerData.getMetadata(), true);
+
+    //fill in memory stat counter (keycount, byte usage)
+    KeyValueContainerUtil.parseKVContainerData(loadedContainerData, config);
+
+    //load container
+    containerSet.addContainer(keyValueContainer);
+
+  }
+
+  private KeyValueContainerData updateContainerData(KeyValueContainerData preCreated)
+      throws IOException {
+    try (FileInputStream fis = new FileInputStream(
+        preCreated.getContainerFile().toString() + ".original")) {
+      //parse descriptor
+      //now, we have extracted the container descriptor from the previous
+      //datanode. We can load it and upload it with the current data
+      // (original metadata + current filepath fields)
+      KeyValueContainerData replicated =
+          (KeyValueContainerData) ContainerDataYaml.readContainer(fis);
+
+      KeyValueContainerData updated = new KeyValueContainerData(
+          replicated.getContainerID(),
+          replicated.getLayOutVersion(),
+          replicated.getMaxSize(),
+          replicated.getOriginPipelineId(),
+          replicated.getOriginNodeId());
+
+      //inherited from the replicated
+      updated
+          .setState(replicated.getState());
+      updated
+          .setContainerDBType(replicated.getContainerDBType());
+      updated
+          .updateBlockCommitSequenceId(replicated
+              .getBlockCommitSequenceId());
+      updated
+          .setSchemaVersion(replicated.getSchemaVersion());
+
+      //inherited from the pre-created seed container
+      updated.setMetadataPath(preCreated.getMetadataPath());
+      updated.setDbFile(preCreated.getDbFile());
+      updated.setChunksPath(preCreated.getChunksPath());
+      updated.setVolume(preCreated.getVolume());
+
+      return updated;
+
     }
   }
 }

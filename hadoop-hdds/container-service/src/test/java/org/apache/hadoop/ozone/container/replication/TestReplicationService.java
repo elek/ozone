@@ -111,7 +111,6 @@ public class TestReplicationService {
         clientConfig,
         () -> scmUuid,
         destinationContainerSet,
-        new SimpleContainerDownloader(clientConfig, null),
         volumeSet);
 
     DatanodeDetails source =
