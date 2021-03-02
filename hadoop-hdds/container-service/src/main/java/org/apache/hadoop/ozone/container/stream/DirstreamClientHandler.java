@@ -11,6 +11,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.util.ByteProcessor;
+import io.netty.util.ReferenceCountUtil;
 
 public class DirstreamClientHandler extends ChannelInboundHandlerAdapter {
 
@@ -30,8 +31,16 @@ public class DirstreamClientHandler extends ChannelInboundHandlerAdapter {
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg)
         throws IOException {
-        ByteBuf buffer = (ByteBuf) msg;
+        try {
+            ByteBuf buffer = (ByteBuf) msg;
+            doRead(ctx, buffer);
+        } finally {
+            ReferenceCountUtil.release(msg);
+        }
+    }
 
+    public void doRead(ChannelHandlerContext ctx, ByteBuf buffer)
+        throws IOException {
         if (headerMode) {
             int eolPosition = buffer.forEachByte(ByteProcessor.FIND_LF) - buffer
                 .readerIndex();
@@ -61,9 +70,7 @@ public class DirstreamClientHandler extends ChannelInboundHandlerAdapter {
                 currentFileName = new StringBuilder();
                 headerMode = true;
                 if (buffer.readableBytes() > 0) {
-                    channelRead(ctx, buffer);
-                } else {
-                    buffer.release();
+                    doRead(ctx, buffer);
                 }
             }
         }
