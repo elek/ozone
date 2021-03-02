@@ -12,7 +12,7 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.string.StringEncoder;
 import io.netty.util.CharsetUtil;
 
-public class StreamingClient {
+public class StreamingClient implements AutoCloseable {
 
     private static EventLoopGroup group;
     private final Bootstrap b;
@@ -28,7 +28,7 @@ public class StreamingClient {
         this.port = port;
         this.host = host;
 
-        group = new NioEventLoopGroup();
+        group = new NioEventLoopGroup(100);
 
         b = new Bootstrap();
         b.group(group)

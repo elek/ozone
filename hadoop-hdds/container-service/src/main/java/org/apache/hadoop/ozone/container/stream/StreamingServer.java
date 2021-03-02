@@ -36,8 +36,8 @@ public class StreamingServer {
 
     public void start() throws InterruptedException {
         ServerBootstrap b = new ServerBootstrap();
-        bossGroup = new NioEventLoopGroup(1);
-        workerGroup = new NioEventLoopGroup();
+        bossGroup = new NioEventLoopGroup(100);
+        workerGroup = new NioEventLoopGroup(100);
 
         b.group(bossGroup, workerGroup)
             .channel(NioServerSocketChannel.class)

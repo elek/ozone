@@ -124,11 +124,11 @@ public class SimpleContainerDownloader implements ContainerDownloader {
   ) throws IOException {
     //    CompletableFuture<Path> result;
     //
-    try {
-      StreamingClient client =
-          new StreamingClient(datanode.getIpAddress(), datanode.getPort(
-              Name.REPLICATION).getValue(),
-              new ContainerStreamingDestination(preCreated));
+    try (
+        StreamingClient client =
+            new StreamingClient(datanode.getIpAddress(), datanode.getPort(
+                Name.REPLICATION).getValue(),
+                new ContainerStreamingDestination(preCreated))) {
       final Channel channel = client.connect();
       channel.writeAndFlush(preCreated.getContainerID() + "\n");
       channel.closeFuture().sync().addListener(f -> {
