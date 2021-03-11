@@ -130,7 +130,7 @@ public class CsiServer extends GenericCli implements Callable<Void> {
     private String volumeOwner;
 
     @Config(key = "mount.command",
-        defaultValue = "goofys --endpoint %s %s %s",
+        defaultValue = "",
         description =
             "This is the mount command which is used to publish volume."
                 + " these %s will be replicated by s3gAddress, volumeId "
