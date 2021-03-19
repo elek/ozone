@@ -17,7 +17,7 @@
  */
 package org.apache.hadoop.ozone.genesis;
 
-import java.io.IOException;
+import gijava.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.Random;
 import java.util.UUID;
 
-import org.apache.hadoop.conf.StorageUnit;
 import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
@@ -45,8 +44,6 @@ import org.apache.hadoop.ozone.om.OMConfigKeys;
 import org.apache.hadoop.ozone.om.OMStorage;
 import org.apache.hadoop.ozone.om.OzoneManager;
 import org.apache.hadoop.security.authentication.client.AuthenticationException;
-
-import org.apache.commons.lang3.RandomStringUtils;
 
 
 /**
