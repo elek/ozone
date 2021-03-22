@@ -18,18 +18,7 @@
 
 package org.apache.hadoop.hdds.scm.pipeline;
 
-import java.io.IOException;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
-
+import com.google.common.base.Preconditions;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
@@ -41,7 +30,18 @@ import org.apache.hadoop.hdds.protocol.proto.HddsProtos.ReplicationType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.base.Preconditions;
+import java.io.IOException;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 
 /**
  * Represents a group of datanodes which store a container.
@@ -55,6 +55,7 @@ public final class Pipeline {
 
   private PipelineState state;
   private Map<DatanodeDetails, Long> nodeStatus;
+  private Map<DatanodeDetails, Integer> replicaIndexes;
   // nodes with ordered distance to client
   private ThreadLocal<List<DatanodeDetails>> nodesInOrder = new ThreadLocal<>();
   // Current reported Leader for the pipeline
@@ -79,6 +80,7 @@ public final class Pipeline {
     this.nodeStatus = nodeStatus;
     this.creationTimestamp = Instant.now();
     this.suggestedLeaderId = suggestedLeaderId;
+    this.replicaIndexes = new HashMap<>();
   }
 
   /**
@@ -187,6 +189,21 @@ public final class Pipeline {
   }
 
   /**
+   * Return the replica index of the specific datanode in the datanode set.
+   * <p>
+   * For non-EC case all the replication should be exactly the same,
+   * therefore the replication index can always be zero. In case of EC
+   * different Datanodes can have different data for one specific block
+   * (parity and/or data parts) therefore the replicaIndex should be
+   * different for each of the pipeline members.
+   *
+   * @param dn datanode details
+   */
+  public int getReplicaIndex(DatanodeDetails dn) {
+    return replicaIndexes.getOrDefault(dn, 0);
+  }
+
+  /**
    * Returns the leader if found else defaults to closest node.
    *
    * @return {@link DatanodeDetails}
@@ -268,9 +285,13 @@ public final class Pipeline {
 
   public HddsProtos.Pipeline getProtobufMessage(int clientVersion)
       throws UnknownPipelineStateException {
+
     List<HddsProtos.DatanodeDetailsProto> members = new ArrayList<>();
+    List<Integer> memberReplicaIndexes = new ArrayList<>();
+
     for (DatanodeDetails dn : nodeStatus.keySet()) {
       members.add(dn.toProto(clientVersion));
+      memberReplicaIndexes.add(replicaIndexes.getOrDefault(dn, 0));
     }
 
     HddsProtos.Pipeline.Builder builder = HddsProtos.Pipeline.newBuilder()
@@ -280,7 +301,8 @@ public final class Pipeline {
         .setState(PipelineState.getProtobuf(state))
         .setLeaderID(leaderId != null ? leaderId.toString() : "")
         .setCreationTimeStamp(creationTimestamp.toEpochMilli())
-        .addAllMembers(members);
+        .addAllMembers(members)
+        .addAllMemberReplicaIndexes(memberReplicaIndexes);
 
     if (leaderId != null) {
       HddsProtos.UUID uuid128 = HddsProtos.UUID.newBuilder()
@@ -407,6 +429,10 @@ public final class Pipeline {
     return new Builder(pipeline);
   }
 
+  private void setReplicaIndexes(Map<DatanodeDetails, Integer> replicaIndexes) {
+    this.replicaIndexes = replicaIndexes;
+  }
+
   /**
    * Builder class for Pipeline.
    */
@@ -421,6 +447,7 @@ public final class Pipeline {
     private UUID leaderId = null;
     private Instant creationTimestamp = null;
     private UUID suggestedLeaderId = null;
+    private Map<DatanodeDetails, Integer> replicaIndexes = new HashMap<>();
 
     public Builder() {}
 
@@ -482,6 +509,12 @@ public final class Pipeline {
       return this;
     }
 
+
+    public Builder setReplicaIndexes(Map<DatanodeDetails, Integer> indexes) {
+      this.replicaIndexes = indexes;
+      return this;
+    }
+
     public Pipeline build() {
       Preconditions.checkNotNull(id);
       Preconditions.checkNotNull(type);
@@ -495,6 +528,8 @@ public final class Pipeline {
       if (creationTimestamp != null) {
         pipeline.setCreationTimestamp(creationTimestamp);
       }
+
+      pipeline.setReplicaIndexes(replicaIndexes);
 
       if (nodeOrder != null && !nodeOrder.isEmpty()) {
         // This branch is for build from ProtoBuf
