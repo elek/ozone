@@ -19,13 +19,13 @@
 package org.apache.hadoop.ozone.scm;
 
 import org.apache.hadoop.hdds.HddsUtils;
+import org.apache.hadoop.hdds.client.RatisReplicationConfig;
 import org.apache.hadoop.hdds.client.ReplicationType;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
-import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
+import org.apache.hadoop.hdds.protocol.proto.HddsProtos.ReplicationFactor;
 import org.apache.hadoop.hdds.scm.ScmConfigKeys;
-import org.apache.hadoop.hdds.scm.container.placement.algorithms
-    .SCMContainerPlacementMetrics;
+import org.apache.hadoop.hdds.scm.container.placement.algorithms.SCMContainerPlacementMetrics;
 import org.apache.hadoop.hdds.scm.pipeline.Pipeline;
 import org.apache.hadoop.hdds.scm.pipeline.PipelineManager;
 import org.apache.hadoop.metrics2.MetricsRecordBuilder;
@@ -54,8 +54,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.apache.hadoop.fs.CommonConfigurationKeysPublic
-    .NET_TOPOLOGY_NODE_SWITCH_MAPPING_IMPL_KEY;
+import static org.apache.hadoop.fs.CommonConfigurationKeysPublic.NET_TOPOLOGY_NODE_SWITCH_MAPPING_IMPL_KEY;
 import static org.apache.hadoop.hdds.client.ReplicationFactor.THREE;
 import static org.apache.hadoop.test.MetricsAsserts.getLongCounter;
 import static org.apache.hadoop.test.MetricsAsserts.getMetrics;
@@ -119,9 +118,10 @@ public class TestSCMContainerPlacementPolicyMetrics {
     // close container
     PipelineManager manager =
         cluster.getStorageContainerManager().getPipelineManager();
+    final RatisReplicationConfig ratisThree =
+        new RatisReplicationConfig(ReplicationFactor.THREE);
     List<Pipeline> pipelines = manager.getPipelines().stream().filter(p ->
-        p.getType() == HddsProtos.ReplicationType.RATIS &&
-            p.getFactor() == HddsProtos.ReplicationFactor.THREE)
+        p.equals(ratisThree))
         .collect(Collectors.toList());
     Pipeline targetPipeline = pipelines.get(0);
     List<DatanodeDetails> nodes = targetPipeline.getNodes();

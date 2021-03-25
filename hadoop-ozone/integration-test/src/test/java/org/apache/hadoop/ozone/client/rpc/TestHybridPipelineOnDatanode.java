@@ -24,31 +24,32 @@ import org.apache.hadoop.hdds.client.ReplicationType;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
-import org.apache.hadoop.hdds.scm.pipeline.PipelineID;
 import org.apache.hadoop.hdds.scm.pipeline.Pipeline;
+import org.apache.hadoop.hdds.scm.pipeline.PipelineID;
 import org.apache.hadoop.ozone.MiniOzoneCluster;
 import org.apache.hadoop.ozone.client.ObjectStore;
+import org.apache.hadoop.ozone.client.OzoneBucket;
 import org.apache.hadoop.ozone.client.OzoneClient;
 import org.apache.hadoop.ozone.client.OzoneClientFactory;
-import org.apache.hadoop.ozone.client.OzoneVolume;
-import org.apache.hadoop.ozone.client.OzoneBucket;
 import org.apache.hadoop.ozone.client.OzoneKey;
 import org.apache.hadoop.ozone.client.OzoneKeyDetails;
+import org.apache.hadoop.ozone.client.OzoneVolume;
 import org.apache.hadoop.ozone.client.io.OzoneInputStream;
 import org.apache.hadoop.ozone.client.io.OzoneOutputStream;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.Timeout;
 
 import java.io.IOException;
-import static java.nio.charset.StandardCharsets.UTF_8;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
-import java.util.HashMap;
-import org.junit.Rule;
-import org.junit.rules.Timeout;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
  * Tests Hybrid Pipeline Creation and IO on same set of Datanodes.
@@ -152,7 +153,7 @@ public class TestHybridPipelineOnDatanode {
     Pipeline pipeline2 =
         cluster.getStorageContainerManager().getPipelineManager()
             .getPipeline(pipelineID2);
-    Assert.assertFalse(pipeline1.getFactor().equals(pipeline2.getFactor()));
+    Assert.assertNotEquals(pipeline1, pipeline2);
     Assert.assertTrue(pipeline1.getType() == HddsProtos.ReplicationType.RATIS);
     Assert.assertTrue(pipeline1.getType() == pipeline2.getType());
     // assert that the pipeline Id1 and pipelineId2 are on the same node

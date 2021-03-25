@@ -59,10 +59,14 @@
     <name>hdds.prometheus.endpoint.enabled</name>
     <value>true</value>
   </property>
-  <property>
+  <!--property>
     <name>ozone.recon.address</name>
     <value>localhost:9891</value>
-  </property>
+  </property-->
+<!--  <property>-->
+<!--    <name>hdds.scm.safemode.pipeline.creation</name>-->
+<!--    <value>true</value>-->
+<!--  </property>-->
   <property>
     <name>ozone.recon.db.dir</name>
     <value>/tmp/recon</value>

@@ -21,6 +21,7 @@ import com.google.protobuf.RpcController;
 import com.google.protobuf.ServiceException;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.hadoop.hdds.annotation.InterfaceAudience;
+import org.apache.hadoop.hdds.client.ReplicationConfig;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos.GetScmInfoResponseProto;
 import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos;
@@ -153,15 +154,6 @@ public final class StorageContainerLocationProtocolClientSideTranslatorPB
     return response;
   }
 
-  /**
-   * Asks SCM where a container should be allocated. SCM responds with the set
-   * of datanodes that should be used creating this container. Ozone/SCM only
-   * supports replication factor of either 1 or 3.
-   *
-   * @param type   - Replication Type
-   * @param factor - Replication Count
-   */
-  @Override
   public ContainerWithPipeline allocateContainer(
       HddsProtos.ReplicationType type, HddsProtos.ReplicationFactor factor,
       String owner) throws IOException {

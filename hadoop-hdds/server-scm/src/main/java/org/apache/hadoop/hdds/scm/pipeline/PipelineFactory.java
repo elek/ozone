@@ -18,20 +18,19 @@
 
 package org.apache.hadoop.hdds.scm.pipeline;
 
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
+import com.google.common.annotations.VisibleForTesting;
+import org.apache.hadoop.hdds.client.ReplicationConfig;
 import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
-import org.apache.hadoop.hdds.protocol.proto.HddsProtos.ReplicationFactor;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos.ReplicationType;
 import org.apache.hadoop.hdds.scm.ha.SCMContext;
 import org.apache.hadoop.hdds.scm.node.NodeManager;
 import org.apache.hadoop.hdds.server.events.EventPublisher;
 
-import com.google.common.annotations.VisibleForTesting;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Creates pipeline based on replication type.
@@ -58,19 +57,27 @@ public class PipelineFactory {
   }
 
   @VisibleForTesting
-  void setProvider(ReplicationType replicationType,
-                     PipelineProvider provider) {
+  void setProvider(
+      ReplicationType replicationType,
+      PipelineProvider provider
+  ) {
     providers.put(replicationType, provider);
   }
 
-  public Pipeline create(ReplicationType type, ReplicationFactor factor)
+  public Pipeline create(
+      ReplicationConfig replicationConfig
+  )
       throws IOException {
-    return providers.get(type).create(factor);
+    return providers
+        .get(replicationConfig.getReplicationType())
+        .create(replicationConfig);
   }
 
-  public Pipeline create(ReplicationType type, ReplicationFactor factor,
-      List<DatanodeDetails> nodes) {
-    return providers.get(type).create(factor, nodes);
+  public Pipeline create(ReplicationConfig replicationConfig,
+      List<DatanodeDetails> nodes
+  ) {
+    return providers.get(replicationConfig.getReplicationType())
+        .create(replicationConfig, nodes);
   }
 
   public void close(ReplicationType type, Pipeline pipeline)

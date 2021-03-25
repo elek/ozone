@@ -18,14 +18,14 @@
 
 package org.apache.hadoop.ozone.recon.scm;
 
-import java.util.List;
-
 import org.apache.commons.collections.map.DefaultedMap;
+import org.apache.hadoop.hdds.client.ReplicationConfig;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
-import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
 import org.apache.hadoop.hdds.scm.pipeline.Pipeline;
 import org.apache.hadoop.hdds.scm.pipeline.PipelineFactory;
 import org.apache.hadoop.hdds.scm.pipeline.PipelineProvider;
+
+import java.util.List;
 
 /**
  * Class to stub out SCM's pipeline providers. This makes sure Recon can
@@ -39,10 +39,10 @@ public class ReconPipelineFactory extends PipelineFactory {
     setProviders(new DefaultedMap(reconMockPipelineProvider));
   }
 
-  static class ReconPipelineProvider extends PipelineProvider {
+  static class ReconPipelineProvider extends PipelineProvider<ReplicationConfig> {
 
     @Override
-    public Pipeline create(HddsProtos.ReplicationFactor factor){
+    public Pipeline create(ReplicationConfig config){
       // We don't expect this to be called at all. But adding this as a red
       // flag for troubleshooting.
       throw new UnsupportedOperationException(
@@ -50,7 +50,7 @@ public class ReconPipelineFactory extends PipelineFactory {
     }
 
     @Override
-    public Pipeline create(HddsProtos.ReplicationFactor factor,
+    public Pipeline create(ReplicationConfig config,
                            List<DatanodeDetails> nodes) {
       throw new UnsupportedOperationException(
           "Trying to create pipeline in Recon, which is prohibited!");

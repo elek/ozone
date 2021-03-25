@@ -18,15 +18,7 @@
 
 package org.apache.hadoop.hdds.scm.storage;
 
-import java.io.EOFException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
-
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.hadoop.fs.CanUnbuffer;
 import org.apache.hadoop.fs.Seekable;
 import org.apache.hadoop.hdds.client.BlockID;
@@ -43,10 +35,17 @@ import org.apache.hadoop.hdds.scm.pipeline.Pipeline;
 import org.apache.hadoop.hdds.security.token.OzoneBlockTokenIdentifier;
 import org.apache.hadoop.io.retry.RetryPolicy;
 import org.apache.hadoop.security.token.Token;
-
-import com.google.common.annotations.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.EOFException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
 /**
  * An {@link InputStream} called from KeyInputStream to read a block from the
@@ -192,12 +191,6 @@ public class BlockInputStream extends InputStream
    * @return List of chunks in this block.
    */
   protected List<ChunkInfo> getChunkInfos() throws IOException {
-    // irrespective of the container state, we will always read via Standalone
-    // protocol.
-    if (pipeline.getType() != HddsProtos.ReplicationType.STAND_ALONE) {
-      pipeline = Pipeline.newBuilder(pipeline)
-          .setType(HddsProtos.ReplicationType.STAND_ALONE).build();
-    }
     acquireClient();
     boolean success = false;
     List<ChunkInfo> chunks;

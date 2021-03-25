@@ -17,21 +17,22 @@
  */
 package org.apache.hadoop.hdds.scm.storage;
 
-import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
-
 import org.apache.hadoop.hdds.client.BlockID;
+import org.apache.hadoop.hdds.client.StandaloneReplicationConfig;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.ChunkInfo;
-import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
+import org.apache.hadoop.hdds.protocol.proto.HddsProtos.ReplicationFactor;
 import org.apache.hadoop.hdds.scm.XceiverClientFactory;
 import org.apache.hadoop.hdds.scm.container.ContainerNotFoundException;
 import org.apache.hadoop.hdds.scm.pipeline.Pipeline;
 import org.apache.hadoop.hdds.scm.pipeline.PipelineID;
 import org.apache.hadoop.hdds.security.token.OzoneBlockTokenIdentifier;
 import org.apache.hadoop.security.token.Token;
+
+import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * A dummy BlockInputStream with pipeline refresh function to mock read
@@ -59,8 +60,8 @@ final class DummyBlockInputStreamWithRetry
           return Pipeline.newBuilder()
               .setState(Pipeline.PipelineState.OPEN)
               .setId(PipelineID.randomId())
-              .setType(HddsProtos.ReplicationType.STAND_ALONE)
-              .setFactor(HddsProtos.ReplicationFactor.ONE)
+              .setReplicationConfig(new StandaloneReplicationConfig(
+                  ReplicationFactor.ONE))
               .setNodes(Collections.emptyList())
               .build();
         }, chunkList, chunkMap);

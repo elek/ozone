@@ -17,11 +17,11 @@
  */
 package org.apache.hadoop.hdds.scm.protocol;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.stream.Collectors;
-
+import com.google.protobuf.ProtocolMessageEnum;
+import com.google.protobuf.RpcController;
+import com.google.protobuf.ServiceException;
 import org.apache.hadoop.hdds.annotation.InterfaceAudience;
+import org.apache.hadoop.hdds.client.ReplicationConfig;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
 import org.apache.hadoop.hdds.protocol.proto.ScmBlockLocationProtocolProtos;
@@ -45,15 +45,15 @@ import org.apache.hadoop.hdds.scm.protocolPB.ScmBlockLocationProtocolPB;
 import org.apache.hadoop.hdds.scm.protocolPB.StorageContainerLocationProtocolPB;
 import org.apache.hadoop.hdds.scm.server.StorageContainerManager;
 import org.apache.hadoop.hdds.server.OzoneProtocolMessageDispatcher;
+import org.apache.hadoop.hdds.utils.ProtocolMessageMetrics;
 import org.apache.hadoop.ozone.common.BlockGroup;
 import org.apache.hadoop.ozone.common.DeleteBlockGroupResult;
-import org.apache.hadoop.hdds.utils.ProtocolMessageMetrics;
-
-import com.google.protobuf.ProtocolMessageEnum;
-import com.google.protobuf.RpcController;
-import com.google.protobuf.ServiceException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * This class is the server-side translator that forwards requests received on
@@ -174,8 +174,12 @@ public final class ScmBlockLocationProtocolServerSideTranslatorPB
       throws IOException {
     List<AllocatedBlock> allocatedBlocks =
         impl.allocateBlock(request.getSize(),
-            request.getNumBlocks(), request.getType(),
-            request.getFactor(), request.getOwner(),
+            request.getNumBlocks(),
+            ReplicationConfig.fromProto(
+                request.getType(),
+                request.getFactor(),
+                request.getEcReplicationConfig()),
+            request.getOwner(),
             ExcludeList.getFromProtoBuf(request.getExcludeList()));
 
     AllocateScmBlockResponseProto.Builder builder =
@@ -196,7 +200,8 @@ public final class ScmBlockLocationProtocolServerSideTranslatorPB
   }
 
   public DeleteScmKeyBlocksResponseProto deleteScmKeyBlocks(
-      DeleteScmKeyBlocksRequestProto req)
+      DeleteScmKeyBlocksRequestProto req
+  )
       throws IOException {
     DeleteScmKeyBlocksResponseProto.Builder resp =
         DeleteScmKeyBlocksResponseProto.newBuilder();

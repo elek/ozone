@@ -17,20 +17,13 @@
  */
 package org.apache.hadoop.hdds.scm.safemode;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.hdds.HddsConfigKeys;
+import org.apache.hadoop.hdds.client.RatisReplicationConfig;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
+import org.apache.hadoop.hdds.protocol.proto.HddsProtos.ReplicationFactor;
 import org.apache.hadoop.hdds.protocol.proto.StorageContainerDatanodeProtocolProtos;
 import org.apache.hadoop.hdds.scm.HddsTestUtils;
 import org.apache.hadoop.hdds.scm.container.ContainerInfo;
@@ -45,19 +38,15 @@ import org.apache.hadoop.hdds.scm.metadata.SCMMetadataStoreImpl;
 import org.apache.hadoop.hdds.scm.pipeline.MockRatisPipelineProvider;
 import org.apache.hadoop.hdds.scm.pipeline.Pipeline;
 import org.apache.hadoop.hdds.scm.pipeline.PipelineManager;
-import org.apache.hadoop.hdds.scm.pipeline.PipelineProvider;
 import org.apache.hadoop.hdds.scm.pipeline.PipelineManagerV2Impl;
+import org.apache.hadoop.hdds.scm.pipeline.PipelineProvider;
 import org.apache.hadoop.hdds.scm.server.SCMDatanodeHeartbeatDispatcher;
 import org.apache.hadoop.hdds.server.events.EventHandler;
 import org.apache.hadoop.hdds.server.events.EventPublisher;
 import org.apache.hadoop.hdds.server.events.EventQueue;
 import org.apache.hadoop.test.GenericTestUtils;
-
 import org.junit.After;
 import org.junit.Assert;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Rule;
@@ -65,6 +54,19 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.junit.rules.Timeout;
 import org.mockito.Mockito;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 /** Test class for SCMSafeModeManager.
  */
@@ -351,8 +353,8 @@ public class TestSCMSafeModeManager {
     for (int i = 0; i < pipelineCount; i++) {
       // Create pipeline
       Pipeline pipeline = pipelineManager.createPipeline(
-          HddsProtos.ReplicationType.RATIS,
-          HddsProtos.ReplicationFactor.THREE);
+          new RatisReplicationConfig(
+              ReplicationFactor.THREE));
 
       pipelineManager.openPipeline(pipeline.getId());
       // Mark pipeline healthy
@@ -600,8 +602,8 @@ public class TestSCMSafeModeManager {
           mockRatisProvider);
 
       Pipeline pipeline = pipelineManager.createPipeline(
-          HddsProtos.ReplicationType.RATIS,
-          HddsProtos.ReplicationFactor.THREE);
+          new RatisReplicationConfig(
+              ReplicationFactor.THREE));
 
       pipeline = pipelineManager.getPipeline(pipeline.getId());
       MockRatisPipelineProvider.markPipelineHealthy(pipeline);
@@ -699,12 +701,12 @@ public class TestSCMSafeModeManager {
     Pipeline pipeline;
     try {
       pipeline = pipelineManager.createPipeline(
-          HddsProtos.ReplicationType.RATIS,
-          HddsProtos.ReplicationFactor.THREE);
+          new RatisReplicationConfig(
+              ReplicationFactor.THREE));
     } catch (SCMException ex) {
       pipeline = pipelineManager.getPipelines(
-          HddsProtos.ReplicationType.RATIS,
-          HddsProtos.ReplicationFactor.THREE).get(0);
+          new RatisReplicationConfig(
+              ReplicationFactor.THREE)).get(0);
     }
 
     // Mark pipeline healthy

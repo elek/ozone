@@ -17,15 +17,10 @@
 
 package org.apache.hadoop.hdds.scm.container;
 
-import java.io.IOException;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.NavigableSet;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
-
+import com.google.common.base.Preconditions;
+import com.google.common.util.concurrent.AtomicLongMap;
+import org.apache.hadoop.hdds.client.RatisReplicationConfig;
+import org.apache.hadoop.hdds.client.ReplicationConfig;
 import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.conf.StorageUnit;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
@@ -43,12 +38,19 @@ import org.apache.hadoop.hdds.scm.pipeline.PipelineManager;
 import org.apache.hadoop.ozone.common.statemachine.InvalidStateTransitionException;
 import org.apache.hadoop.ozone.common.statemachine.StateMachine;
 import org.apache.hadoop.util.Time;
-
-import com.google.common.base.Preconditions;
-import com.google.common.util.concurrent.AtomicLongMap;
-import static org.apache.hadoop.hdds.scm.exceptions.SCMException.ResultCodes.FAILED_TO_CHANGE_CONTAINER_STATE;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.NavigableSet;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+
+import static org.apache.hadoop.hdds.scm.exceptions.SCMException.ResultCodes.FAILED_TO_CHANGE_CONTAINER_STATE;
 
 /**
  * A container state manager keeps track of container states and returns
@@ -237,39 +239,33 @@ public class ContainerStateManager {
 
   /**
    * Allocates a new container based on the type, replication etc.
-   *
-   * @param pipelineManager -- Pipeline Manager class.
-   * @param type -- Replication type.
-   * @param replicationFactor - Replication replicationFactor.
-   * @return ContainerWithPipeline
-   * @throws IOException  on Failure.
    */
   ContainerInfo allocateContainer(final PipelineManager pipelineManager,
-      final HddsProtos.ReplicationType type,
-      final HddsProtos.ReplicationFactor replicationFactor, final String owner)
+      final ReplicationConfig replicationConfig, final String owner)
       throws IOException {
     final List<Pipeline> pipelines = pipelineManager
-        .getPipelines(type, replicationFactor, Pipeline.PipelineState.OPEN);
+        .getPipelines(replicationConfig, Pipeline.PipelineState.OPEN);
     Pipeline pipeline;
 
-    boolean bgCreateOne = (type == ReplicationType.RATIS) && replicationFactor
-        == ReplicationFactor.ONE && autoCreateRatisOne;
-    boolean bgCreateThree = (type == ReplicationType.RATIS) && replicationFactor
-        == ReplicationFactor.THREE;
+    boolean bgCreateOne = RatisReplicationConfig
+        .hasFactor(replicationConfig, ReplicationFactor.ONE)
+        && autoCreateRatisOne;
+    boolean bgCreateThree = RatisReplicationConfig
+        .hasFactor(replicationConfig, ReplicationFactor.ONE);
 
     if (!pipelines.isEmpty() && (bgCreateOne || bgCreateThree)) {
       // let background create Ratis pipelines.
       pipeline = pipelines.get((int) containerCount.get() % pipelines.size());
     } else {
       try {
-        pipeline = pipelineManager.createPipeline(type, replicationFactor);
+        pipeline = pipelineManager.createPipeline(replicationConfig);
         pipelineManager.waitPipelineReady(pipeline.getId(), 0);
       } catch (IOException e) {
 
         if (pipelines.isEmpty()) {
           throw new IOException("Could not allocate container. Cannot get any" +
-              " matching pipeline for Type:" + type +
-              ", Factor:" + replicationFactor + ", State:PipelineState.OPEN");
+              " matching pipeline for replicationConfig:" + replicationConfig +
+              ", State:PipelineState.OPEN");
         }
         pipeline = pipelines.get((int) containerCount.get() % pipelines.size());
       }
@@ -309,7 +305,8 @@ public class ContainerStateManager {
         .setOwner(owner)
         .setContainerID(containerID)
         .setDeleteTransactionId(0)
-        .setReplicationFactor(pipeline.getFactor())
+        .setReplicationFactor(
+            ReplicationConfig.getLegacyFactor(pipeline.getReplicationConfig()))
         .setReplicationType(pipeline.getType())
         .build();
     addContainerInfo(containerID, containerInfo, pipelineManager, pipeline);

@@ -18,15 +18,12 @@
 
 package org.apache.hadoop.hdds.scm.safemode;
 
-import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-
 import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.hdds.HddsConfigKeys;
+import org.apache.hadoop.hdds.client.RatisReplicationConfig;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
+import org.apache.hadoop.hdds.protocol.proto.HddsProtos.ReplicationFactor;
 import org.apache.hadoop.hdds.scm.HddsTestUtils;
 import org.apache.hadoop.hdds.scm.container.ContainerInfo;
 import org.apache.hadoop.hdds.scm.container.MockNodeManager;
@@ -38,14 +35,18 @@ import org.apache.hadoop.hdds.scm.metadata.SCMMetadataStore;
 import org.apache.hadoop.hdds.scm.metadata.SCMMetadataStoreImpl;
 import org.apache.hadoop.hdds.scm.pipeline.MockRatisPipelineProvider;
 import org.apache.hadoop.hdds.scm.pipeline.Pipeline;
-import org.apache.hadoop.hdds.scm.pipeline.PipelineProvider;
 import org.apache.hadoop.hdds.scm.pipeline.PipelineManagerV2Impl;
+import org.apache.hadoop.hdds.scm.pipeline.PipelineProvider;
 import org.apache.hadoop.hdds.server.events.EventQueue;
 import org.apache.hadoop.test.GenericTestUtils;
-
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 /**
  * This class tests HealthyPipelineSafeMode rule.
@@ -147,16 +148,16 @@ public class TestHealthyPipelineSafeModeRule {
 
       // Create 3 pipelines
       Pipeline pipeline1 =
-          pipelineManager.createPipeline(HddsProtos.ReplicationType.RATIS,
-              HddsProtos.ReplicationFactor.THREE);
+          pipelineManager.createPipeline(new RatisReplicationConfig(
+              ReplicationFactor.THREE));
       pipelineManager.openPipeline(pipeline1.getId());
       Pipeline pipeline2 =
-          pipelineManager.createPipeline(HddsProtos.ReplicationType.RATIS,
-              HddsProtos.ReplicationFactor.THREE);
+          pipelineManager.createPipeline(new RatisReplicationConfig(
+              ReplicationFactor.THREE));
       pipelineManager.openPipeline(pipeline2.getId());
       Pipeline pipeline3 =
-          pipelineManager.createPipeline(HddsProtos.ReplicationType.RATIS,
-              HddsProtos.ReplicationFactor.THREE);
+          pipelineManager.createPipeline(new RatisReplicationConfig(
+              ReplicationFactor.THREE));
       pipelineManager.openPipeline(pipeline3.getId());
 
       // Mark pipeline healthy
@@ -245,16 +246,16 @@ public class TestHealthyPipelineSafeModeRule {
 
       // Create 3 pipelines
       Pipeline pipeline1 =
-          pipelineManager.createPipeline(HddsProtos.ReplicationType.RATIS,
-              HddsProtos.ReplicationFactor.ONE);
+          pipelineManager.createPipeline(new RatisReplicationConfig(
+              ReplicationFactor.ONE));
       pipelineManager.openPipeline(pipeline1.getId());
       Pipeline pipeline2 =
-          pipelineManager.createPipeline(HddsProtos.ReplicationType.RATIS,
-              HddsProtos.ReplicationFactor.THREE);
+          pipelineManager.createPipeline(new RatisReplicationConfig(
+              ReplicationFactor.THREE));
       pipelineManager.openPipeline(pipeline2.getId());
       Pipeline pipeline3 =
-          pipelineManager.createPipeline(HddsProtos.ReplicationType.RATIS,
-              HddsProtos.ReplicationFactor.THREE);
+          pipelineManager.createPipeline(new RatisReplicationConfig(
+              ReplicationFactor.THREE));
       pipelineManager.openPipeline(pipeline3.getId());
 
       // Mark pipeline healthy

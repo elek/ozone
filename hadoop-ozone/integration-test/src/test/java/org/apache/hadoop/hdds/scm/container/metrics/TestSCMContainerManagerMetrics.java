@@ -18,6 +18,7 @@
 package org.apache.hadoop.hdds.scm.container.metrics;
 
 import org.apache.commons.lang3.RandomUtils;
+import org.apache.hadoop.hdds.client.RatisReplicationConfig;
 import org.apache.hadoop.hdds.client.ReplicationFactor;
 import org.apache.hadoop.hdds.client.ReplicationType;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
@@ -35,17 +36,16 @@ import org.apache.hadoop.test.GenericTestUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.Timeout;
 
 import java.io.IOException;
 import java.util.HashMap;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_CONTAINER_REPORT_INTERVAL;
-import static org.apache.hadoop.hdds.HddsConfigKeys
-    .HDDS_SCM_SAFEMODE_PIPELINE_CREATION;
-import org.junit.Rule;
-import org.junit.rules.Timeout;
+import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_SCM_SAFEMODE_PIPELINE_CREATION;
 import static org.apache.hadoop.test.MetricsAsserts.getLongCounter;
 import static org.apache.hadoop.test.MetricsAsserts.getMetrics;
 import static org.junit.Assert.fail;
@@ -89,8 +89,8 @@ public class TestSCMContainerManagerMetrics {
         "NumSuccessfulCreateContainers", metrics);
 
     ContainerInfo containerInfo = containerManager.allocateContainer(
-        HddsProtos.ReplicationType.RATIS,
-        HddsProtos.ReplicationFactor.ONE, OzoneConsts.OZONE);
+        new RatisReplicationConfig(
+            HddsProtos.ReplicationFactor.ONE), OzoneConsts.OZONE);
 
     metrics = getMetrics(SCMContainerManagerMetrics.class.getSimpleName());
     Assert.assertEquals(getLongCounter("NumSuccessfulCreateContainers",
@@ -98,8 +98,8 @@ public class TestSCMContainerManagerMetrics {
 
     try {
       containerManager.allocateContainer(
-          HddsProtos.ReplicationType.RATIS,
-          HddsProtos.ReplicationFactor.THREE, OzoneConsts.OZONE);
+          new RatisReplicationConfig(
+              HddsProtos.ReplicationFactor.THREE), OzoneConsts.OZONE);
       fail("testContainerOpsMetrics failed");
     } catch (IOException ex) {
       // Here it should fail, so it should have the old metric value.

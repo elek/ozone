@@ -17,17 +17,12 @@
 
 package org.apache.hadoop.hdds.scm.container;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Set;
-
+import org.apache.hadoop.hdds.client.StandaloneReplicationConfig;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
 import org.apache.hadoop.hdds.protocol.MockDatanodeDetails;
-import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
-import org.apache.hadoop.hdds.protocol.proto
-    .StorageContainerDatanodeProtocolProtos.ContainerReplicaProto;
-
+import org.apache.hadoop.hdds.protocol.proto.HddsProtos.ReplicationFactor;
+import org.apache.hadoop.hdds.protocol.proto.StorageContainerDatanodeProtocolProtos.ContainerReplicaProto;
 import org.apache.hadoop.hdds.scm.pipeline.Pipeline;
 import org.apache.hadoop.hdds.scm.pipeline.PipelineID;
 import org.apache.hadoop.hdds.scm.pipeline.PipelineManager;
@@ -35,6 +30,10 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Set;
 
 import static org.mockito.Mockito.when;
 
@@ -111,16 +110,15 @@ public class TestContainerStateManager {
     Pipeline pipeline =
         Pipeline.newBuilder().setState(Pipeline.PipelineState.CLOSED)
             .setId(PipelineID.randomId())
-            .setType(HddsProtos.ReplicationType.STAND_ALONE)
-            .setFactor(HddsProtos.ReplicationFactor.THREE)
+            .setReplicationConfig(new StandaloneReplicationConfig(ReplicationFactor.THREE))
             .setNodes(new ArrayList<>()).build();
 
-    when(pipelineManager.createPipeline(HddsProtos.ReplicationType.STAND_ALONE,
-        HddsProtos.ReplicationFactor.THREE)).thenReturn(pipeline);
+    when(pipelineManager.createPipeline(new StandaloneReplicationConfig(
+        ReplicationFactor.THREE))).thenReturn(pipeline);
 
     return containerStateManager.allocateContainer(pipelineManager,
-        HddsProtos.ReplicationType.STAND_ALONE,
-        HddsProtos.ReplicationFactor.THREE, "root");
+        new StandaloneReplicationConfig(
+            ReplicationFactor.THREE), "root");
 
   }
 

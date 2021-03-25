@@ -22,8 +22,10 @@ package org.apache.hadoop.ozone.om;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.hdds.client.BlockID;
 import org.apache.hadoop.hdds.client.ContainerBlockID;
+import org.apache.hadoop.hdds.client.ReplicationConfig;
+import org.apache.hadoop.hdds.client.StandaloneReplicationConfig;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
-import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
+import org.apache.hadoop.hdds.protocol.proto.HddsProtos.ReplicationFactor;
 import org.apache.hadoop.hdds.scm.AddSCMRequest;
 import org.apache.hadoop.hdds.scm.ScmInfo;
 import org.apache.hadoop.hdds.scm.container.common.helpers.AllocatedBlock;
@@ -45,12 +47,9 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.apache.hadoop.hdds.protocol.MockDatanodeDetails.randomDatanodeDetails;
-import static org.apache.hadoop.hdds.protocol.proto
-    .ScmBlockLocationProtocolProtos.DeleteScmBlockResult.Result;
-import static org.apache.hadoop.hdds.protocol.proto
-    .ScmBlockLocationProtocolProtos.DeleteScmBlockResult.Result.success;
-import static org.apache.hadoop.hdds.protocol.proto
-    .ScmBlockLocationProtocolProtos.DeleteScmBlockResult.Result.unknownFailure;
+import static org.apache.hadoop.hdds.protocol.proto.ScmBlockLocationProtocolProtos.DeleteScmBlockResult.Result;
+import static org.apache.hadoop.hdds.protocol.proto.ScmBlockLocationProtocolProtos.DeleteScmBlockResult.Result.success;
+import static org.apache.hadoop.hdds.protocol.proto.ScmBlockLocationProtocolProtos.DeleteScmBlockResult.Result.unknownFailure;
 
 /**
  * This is a testing client that allows us to intercept calls from OzoneManager
@@ -108,8 +107,6 @@ public class ScmBlockLocationTestingClient implements ScmBlockLocationProtocol {
   /**
    * Returns Fake blocks to the BlockManager so we get blocks in the Database.
    * @param size - size of the block.
-   * @param type Replication Type
-   * @param factor - Replication factor
    * @param owner - String owner.
    * @param excludeList list of dns/pipelines to exclude
    * @return
@@ -117,7 +114,7 @@ public class ScmBlockLocationTestingClient implements ScmBlockLocationProtocol {
    */
   @Override
   public List<AllocatedBlock> allocateBlock(long size, int num,
-      HddsProtos.ReplicationType type, HddsProtos.ReplicationFactor factor,
+      ReplicationConfig config,
       String owner, ExcludeList excludeList) throws IOException {
     DatanodeDetails datanodeDetails = randomDatanodeDetails();
     Pipeline pipeline = createPipeline(datanodeDetails);
@@ -136,8 +133,8 @@ public class ScmBlockLocationTestingClient implements ScmBlockLocationProtocol {
     Pipeline pipeline = Pipeline.newBuilder()
         .setState(Pipeline.PipelineState.OPEN)
         .setId(PipelineID.randomId())
-        .setType(HddsProtos.ReplicationType.STAND_ALONE)
-        .setFactor(HddsProtos.ReplicationFactor.ONE)
+        .setReplicationConfig(
+            new StandaloneReplicationConfig(ReplicationFactor.ONE))
         .setNodes(dns)
         .build();
     return pipeline;

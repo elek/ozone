@@ -17,21 +17,16 @@
  */
 package org.apache.hadoop.hdds.scm;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.TimeUnit;
-
 import org.apache.hadoop.hdds.HddsConfigKeys;
+import org.apache.hadoop.hdds.client.RatisReplicationConfig;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
-import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
+import org.apache.hadoop.hdds.protocol.proto.HddsProtos.ReplicationFactor;
 import org.apache.hadoop.hdds.scm.pipeline.Pipeline;
 import org.apache.hadoop.hdds.scm.storage.ContainerProtocolCalls;
 import org.apache.hadoop.ozone.HddsDatanodeService;
 import org.apache.hadoop.ozone.MiniOzoneCluster;
 import org.apache.hadoop.ozone.container.common.transport.server.ratis.XceiverServerRatis;
 import org.apache.hadoop.test.GenericTestUtils;
-
-import static org.apache.hadoop.ozone.OzoneConfigKeys.DFS_RATIS_LEADER_ELECTION_MINIMUM_TIMEOUT_DURATION_KEY;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.ratis.grpc.client.GrpcClientProtocolService;
@@ -45,6 +40,12 @@ import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.LoggerFactory;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.TimeUnit;
+
+import static org.apache.hadoop.ozone.OzoneConfigKeys.DFS_RATIS_LEADER_ELECTION_MINIMUM_TIMEOUT_DURATION_KEY;
 
 /**
  * Test pipeline leader information is correctly used.
@@ -77,8 +78,8 @@ public class TestRatisPipelineLeader {
   @Test(timeout = 120000)
   public void testLeaderIdUsedOnFirstCall() throws Exception {
     List<Pipeline> pipelines = cluster.getStorageContainerManager()
-        .getPipelineManager().getPipelines(HddsProtos.ReplicationType.RATIS,
-            HddsProtos.ReplicationFactor.THREE);
+        .getPipelineManager().getPipelines(new RatisReplicationConfig(
+            ReplicationFactor.THREE));
     Assert.assertFalse(pipelines.isEmpty());
     Pipeline ratisPipeline = pipelines.iterator().next();
     Assert.assertTrue(ratisPipeline.isHealthy());
@@ -109,8 +110,8 @@ public class TestRatisPipelineLeader {
   @Test(timeout = 120000)
   public void testLeaderIdAfterLeaderChange() throws Exception {
     List<Pipeline> pipelines = cluster.getStorageContainerManager()
-        .getPipelineManager().getPipelines(HddsProtos.ReplicationType.RATIS,
-            HddsProtos.ReplicationFactor.THREE);
+        .getPipelineManager().getPipelines(new RatisReplicationConfig(
+            ReplicationFactor.THREE));
     Assert.assertFalse(pipelines.isEmpty());
     Pipeline ratisPipeline = pipelines.iterator().next();
     Assert.assertTrue(ratisPipeline.isHealthy());

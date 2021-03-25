@@ -17,15 +17,9 @@
  */
 package org.apache.hadoop.ozone.genesis;
 
-import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
-import java.util.UUID;
-
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.hadoop.conf.StorageUnit;
+import org.apache.hadoop.hdds.client.RatisReplicationConfig;
 import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
@@ -47,7 +41,13 @@ import org.apache.hadoop.ozone.om.OMStorage;
 import org.apache.hadoop.ozone.om.OzoneManager;
 import org.apache.hadoop.security.authentication.client.AuthenticationException;
 
-import org.apache.commons.lang3.RandomStringUtils;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+import java.util.UUID;
 
 
 /**
@@ -164,8 +164,7 @@ public final class GenesisUtil {
           Pipeline.newBuilder()
               .setState(Pipeline.PipelineState.OPEN)
               .setId(PipelineID.randomId())
-              .setType(HddsProtos.ReplicationType.RATIS)
-              .setFactor(factor)
+              .setReplicationConfig(new RatisReplicationConfig(factor))
               .setNodes(nodes)
               .build();
       pipelineTable.put(pipeline.getId(),

@@ -18,19 +18,13 @@
 
 package org.apache.hadoop.ozone.debug;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.HashSet;
-import com.google.gson.GsonBuilder;
 import com.google.gson.Gson;
-import com.google.gson.JsonObject;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import org.apache.hadoop.hdds.cli.SubcommandWithParent;
+import org.apache.hadoop.hdds.client.StandaloneReplicationConfig;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
@@ -52,6 +46,16 @@ import org.apache.hadoop.ozone.shell.OzoneAddress;
 import org.apache.hadoop.ozone.shell.keys.KeyHandler;
 import org.kohsuke.MetaInfServices;
 import picocli.CommandLine.Command;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+
+import static org.apache.hadoop.hdds.protocol.proto.HddsProtos.ReplicationFactor.ONE;
 
 /**
  * Class that gives chunk location given a specific key.
@@ -117,7 +121,7 @@ public class ChunkKeyHandler extends KeyHandler implements
       Pipeline pipeline = keyLocation.getPipeline();
       if (pipeline.getType() != HddsProtos.ReplicationType.STAND_ALONE) {
         pipeline = Pipeline.newBuilder(pipeline)
-                .setType(HddsProtos.ReplicationType.STAND_ALONE).build();
+            .setReplicationConfig(new StandaloneReplicationConfig(ONE)).build();
       }
       xceiverClient = xceiverClientManager
               .acquireClientForReadData(pipeline);

@@ -18,13 +18,9 @@
 
 package org.apache.hadoop.ozone.recon.scm;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
+import org.apache.hadoop.hdds.client.StandaloneReplicationConfig;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
-import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
+import org.apache.hadoop.hdds.protocol.proto.HddsProtos.ReplicationFactor;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos.ReplicationType;
 import org.apache.hadoop.hdds.scm.ha.MockSCMHADBTransactionBuffer;
 import org.apache.hadoop.hdds.scm.ha.MockSCMHAManager;
@@ -43,19 +39,24 @@ import org.apache.hadoop.hdds.server.events.EventQueue;
 import org.apache.hadoop.hdds.utils.db.DBStore;
 import org.apache.hadoop.hdds.utils.db.DBStoreBuilder;
 import org.apache.hadoop.ozone.recon.scm.ReconPipelineFactory.ReconPipelineProvider;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import static org.apache.hadoop.hdds.protocol.MockDatanodeDetails.randomDatanodeDetails;
 import static org.apache.hadoop.hdds.scm.ScmConfigKeys.OZONE_SCM_NAMES;
 import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_METADATA_DIRS;
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.getRandomPipeline;
-import org.junit.After;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
 import static org.mockito.Mockito.mock;
 
 /**
@@ -100,20 +101,19 @@ public class TestReconPipelineManager {
 
     // Valid pipeline in Allocated state.
     Pipeline validPipeline = Pipeline.newBuilder()
-        .setFactor(HddsProtos.ReplicationFactor.ONE)
+        .setReplicationConfig(new StandaloneReplicationConfig(ReplicationFactor.ONE))
         .setId(pipelinesFromScm.get(0).getId())
         .setNodes(pipelinesFromScm.get(0).getNodes())
         .setState(Pipeline.PipelineState.ALLOCATED)
-        .setType(ReplicationType.STAND_ALONE)
+
         .build();
 
     // Invalid pipeline.
     Pipeline invalidPipeline = Pipeline.newBuilder()
-        .setFactor(HddsProtos.ReplicationFactor.ONE)
+        .setReplicationConfig(new StandaloneReplicationConfig(ReplicationFactor.ONE))
         .setId(PipelineID.randomId())
         .setNodes(Collections.singletonList(randomDatanodeDetails()))
         .setState(Pipeline.PipelineState.CLOSED)
-        .setType(HddsProtos.ReplicationType.STAND_ALONE)
         .build();
 
     NetworkTopology clusterMap = new NetworkTopologyImpl(conf);

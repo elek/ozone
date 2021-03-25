@@ -18,12 +18,10 @@
 
 package org.apache.hadoop.hdds.scm.pipeline;
 
-import java.io.IOException;
-import java.util.List;
-
+import org.apache.hadoop.hdds.client.RatisReplicationConfig;
+import org.apache.hadoop.hdds.client.ReplicationConfig;
 import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
-import org.apache.hadoop.hdds.protocol.proto.HddsProtos.ReplicationType;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos.ReplicationFactor;
 import org.apache.hadoop.hdds.scm.ScmConfigKeys;
 import org.apache.hadoop.hdds.scm.events.SCMEvents;
@@ -38,16 +36,19 @@ import org.apache.hadoop.hdds.server.events.EventPublisher;
 import org.apache.hadoop.ozone.protocol.commands.ClosePipelineCommand;
 import org.apache.hadoop.ozone.protocol.commands.CommandForDatanode;
 import org.apache.hadoop.ozone.protocol.commands.CreatePipelineCommand;
-
 import org.apache.ratis.protocol.exceptions.NotLeaderException;
 import org.apache.ratis.thirdparty.com.google.common.annotations.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.util.List;
+
 /**
  * Implements Api for creating ratis pipelines.
  */
-public class RatisPipelineProvider extends PipelineProvider {
+public class RatisPipelineProvider
+    extends PipelineProvider<RatisReplicationConfig> {
 
   private static final Logger LOG =
       LoggerFactory.getLogger(RatisPipelineProvider.class);
@@ -86,30 +87,30 @@ public class RatisPipelineProvider extends PipelineProvider {
     }
   }
 
-  private boolean exceedPipelineNumberLimit(ReplicationFactor factor) {
-    if (factor != ReplicationFactor.THREE) {
+  private boolean exceedPipelineNumberLimit(
+      RatisReplicationConfig replicationConfig) {
+    if (replicationConfig.getReplicationFactor() != ReplicationFactor.THREE) {
       // Only put limits for Factor THREE pipelines.
       return false;
     }
     // Per datanode limit
     if (maxPipelinePerDatanode > 0) {
-      return (getPipelineStateManager().getPipelines(
-          ReplicationType.RATIS, factor).size() -
-          getPipelineStateManager().getPipelines(ReplicationType.RATIS, factor,
+      return (getPipelineStateManager().getPipelines(replicationConfig).size() -
+          getPipelineStateManager().getPipelines(new RatisReplicationConfig(
+                  ReplicationConfig.getLegacyFactor(replicationConfig)),
               PipelineState.CLOSED).size()) > maxPipelinePerDatanode *
           getNodeManager().getNodeCount(NodeStatus.inServiceHealthy()) /
-          factor.getNumber();
+          replicationConfig.getRequiredNodes();
     }
 
     // Global limit
     if (pipelineNumberLimit > 0) {
-      return (getPipelineStateManager().getPipelines(ReplicationType.RATIS,
-          ReplicationFactor.THREE).size() -
+      return (getPipelineStateManager().getPipelines(replicationConfig).size() -
           getPipelineStateManager().getPipelines(
-              ReplicationType.RATIS, ReplicationFactor.THREE,
+              new RatisReplicationConfig(ReplicationFactor.THREE),
               PipelineState.CLOSED).size()) >
-          (pipelineNumberLimit - getPipelineStateManager().getPipelines(
-              ReplicationType.RATIS, ReplicationFactor.ONE).size());
+          (pipelineNumberLimit - getPipelineStateManager()
+              .getPipelines(new RatisReplicationConfig(ReplicationFactor.ONE)).size());
     }
 
     return false;
@@ -121,20 +122,22 @@ public class RatisPipelineProvider extends PipelineProvider {
   }
 
   @Override
-  public synchronized Pipeline create(ReplicationFactor factor)
+  public synchronized Pipeline create(RatisReplicationConfig replicationConfig)
       throws IOException {
-    if (exceedPipelineNumberLimit(factor)) {
+    if (exceedPipelineNumberLimit(replicationConfig)) {
       throw new SCMException("Ratis pipeline number meets the limit: " +
-          pipelineNumberLimit + " factor : " +
-          factor.getNumber(),
+          pipelineNumberLimit + " replicationConfig : " +
+          replicationConfig,
           SCMException.ResultCodes.FAILED_TO_FIND_SUITABLE_NODE);
     }
 
     List<DatanodeDetails> dns;
 
-    switch(factor) {
+    final ReplicationFactor factor =
+        replicationConfig.getReplicationFactor();
+    switch (factor) {
     case ONE:
-      dns = pickNodesNeverUsed(ReplicationType.RATIS, ReplicationFactor.ONE);
+      dns = pickNodesNeverUsed(replicationConfig);
       break;
     case THREE:
       dns = placementPolicy.chooseDatanodes(null,
@@ -149,8 +152,8 @@ public class RatisPipelineProvider extends PipelineProvider {
     Pipeline pipeline = Pipeline.newBuilder()
         .setId(PipelineID.randomId())
         .setState(PipelineState.ALLOCATED)
-        .setType(ReplicationType.RATIS)
-        .setFactor(factor)
+        .setReplicationConfig(new RatisReplicationConfig(
+            factor))
         .setNodes(dns)
         .setSuggestedLeaderId(
             suggestedLeader != null ? suggestedLeader.getUuid() : null)
@@ -176,13 +179,12 @@ public class RatisPipelineProvider extends PipelineProvider {
   }
 
   @Override
-  public Pipeline create(ReplicationFactor factor,
-                         List<DatanodeDetails> nodes) {
+  public Pipeline create(RatisReplicationConfig replicationConfig,
+      List<DatanodeDetails> nodes) {
     return Pipeline.newBuilder()
         .setId(PipelineID.randomId())
         .setState(PipelineState.ALLOCATED)
-        .setType(ReplicationType.RATIS)
-        .setFactor(factor)
+        .setReplicationConfig(replicationConfig)
         .setNodes(nodes)
         .build();
   }

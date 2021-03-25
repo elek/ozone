@@ -16,11 +16,9 @@
  */
 package org.apache.hadoop.ozone.freon;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.concurrent.Callable;
-
+import com.codahale.metrics.Timer;
 import org.apache.hadoop.hdds.cli.HddsVersionProvider;
+import org.apache.hadoop.hdds.client.ReplicationConfig;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
@@ -31,12 +29,14 @@ import org.apache.hadoop.hdds.scm.protocol.StorageContainerLocationProtocol;
 import org.apache.hadoop.ozone.OzoneSecurityUtil;
 import org.apache.hadoop.ozone.common.Checksum;
 import org.apache.hadoop.ozone.common.ChecksumData;
-
-import com.codahale.metrics.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.concurrent.Callable;
 
 /**
  * Data validator of chunks to use pure datanode XCeiver interface.
@@ -99,7 +99,9 @@ public class DatanodeChunkValidator extends BaseFreonGenerator
 
       } else {
         pipeline = pipelines.stream()
-              .filter(p -> p.getFactor() == HddsProtos.ReplicationFactor.THREE)
+            .filter(
+                p -> ReplicationConfig.getLegacyFactor(p.getReplicationConfig())
+                    == HddsProtos.ReplicationFactor.THREE)
               .findFirst()
               .orElseThrow(() -> new IllegalArgumentException(
                       "Pipeline ID is NOT defined, and no pipeline " +

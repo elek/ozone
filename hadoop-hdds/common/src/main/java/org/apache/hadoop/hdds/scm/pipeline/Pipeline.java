@@ -22,10 +22,10 @@ import com.google.common.base.Preconditions;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
+import org.apache.hadoop.hdds.client.ReplicationConfig;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos.DatanodeDetailsProto;
-import org.apache.hadoop.hdds.protocol.proto.HddsProtos.ReplicationFactor;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos.ReplicationType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,8 +50,7 @@ public final class Pipeline {
 
   private static final Logger LOG = LoggerFactory.getLogger(Pipeline.class);
   private final PipelineID id;
-  private final ReplicationType type;
-  private final ReplicationFactor factor;
+  private final ReplicationConfig replicationConfig;
 
   private PipelineState state;
   private Map<DatanodeDetails, Long> nodeStatus;
@@ -70,12 +69,11 @@ public final class Pipeline {
    * ContainerStateManager#getMatchingContainerByPipeline to take a lock on
    * the container allocations for a particular pipeline.
    */
-  private Pipeline(PipelineID id, ReplicationType type,
-      ReplicationFactor factor, PipelineState state,
+  private Pipeline(PipelineID id,
+      ReplicationConfig replicationConfig, PipelineState state,
       Map<DatanodeDetails, Long> nodeStatus, UUID suggestedLeaderId) {
     this.id = id;
-    this.type = type;
-    this.factor = factor;
+    this.replicationConfig = replicationConfig;
     this.state = state;
     this.nodeStatus = nodeStatus;
     this.creationTimestamp = Instant.now();
@@ -98,16 +96,7 @@ public final class Pipeline {
    * @return type - Simple or Ratis.
    */
   public ReplicationType getType() {
-    return type;
-  }
-
-  /**
-   * Returns the factor.
-   *
-   * @return type - Simple or Ratis.
-   */
-  public ReplicationFactor getFactor() {
-    return factor;
+    return replicationConfig.getReplicationType();
   }
 
   /**
@@ -296,8 +285,8 @@ public final class Pipeline {
 
     HddsProtos.Pipeline.Builder builder = HddsProtos.Pipeline.newBuilder()
         .setId(id.getProtobuf())
-        .setType(type)
-        .setFactor(factor)
+        .setType(replicationConfig.getReplicationType())
+        .setFactor(ReplicationConfig.getLegacyFactor(replicationConfig))
         .setState(PipelineState.getProtobuf(state))
         .setLeaderID(leaderId != null ? leaderId.toString() : "")
         .setCreationTimeStamp(creationTimestamp.toEpochMilli())
@@ -364,9 +353,10 @@ public final class Pipeline {
           new UUID(uuid.getMostSigBits(), uuid.getLeastSigBits());
     }
 
+    final ReplicationConfig config = ReplicationConfig
+        .fromProto(pipeline.getType(), pipeline.getFactor(), null);
     return new Builder().setId(PipelineID.getFromProtobuf(pipeline.getId()))
-        .setFactor(pipeline.getFactor())
-        .setType(pipeline.getType())
+        .setReplicationConfig(config)
         .setState(PipelineState.fromProtobuf(pipeline.getState()))
         .setNodes(nodes)
         .setLeaderId(leaderId)
@@ -389,8 +379,7 @@ public final class Pipeline {
 
     return new EqualsBuilder()
         .append(id, that.id)
-        .append(type, that.type)
-        .append(factor, that.factor)
+        .append(replicationConfig, that.replicationConfig)
         .append(getNodes(), that.getNodes())
         .isEquals();
   }
@@ -399,8 +388,7 @@ public final class Pipeline {
   public int hashCode() {
     return new HashCodeBuilder()
         .append(id)
-        .append(type)
-        .append(factor)
+        .append(replicationConfig.getReplicationType())
         .append(nodeStatus)
         .toHashCode();
   }
@@ -412,8 +400,7 @@ public final class Pipeline {
     b.append(" Id: ").append(id.getId());
     b.append(", Nodes: ");
     nodeStatus.keySet().forEach(b::append);
-    b.append(", Type:").append(getType());
-    b.append(", Factor:").append(getFactor());
+    b.append(", ReplicationConfig: ").append(replicationConfig);
     b.append(", State:").append(getPipelineState());
     b.append(", leaderId:").append(leaderId != null ? leaderId.toString() : "");
     b.append(", CreationTimestamp").append(getCreationTimestamp());
@@ -433,13 +420,16 @@ public final class Pipeline {
     this.replicaIndexes = replicaIndexes;
   }
 
+  public ReplicationConfig getReplicationConfig() {
+    return replicationConfig;
+  }
+
   /**
    * Builder class for Pipeline.
    */
   public static class Builder {
     private PipelineID id = null;
-    private ReplicationType type = null;
-    private ReplicationFactor factor = null;
+    private ReplicationConfig replicationConfig = null;
     private PipelineState state = null;
     private Map<DatanodeDetails, Long> nodeStatus = null;
     private List<Integer> nodeOrder = null;
@@ -453,8 +443,7 @@ public final class Pipeline {
 
     public Builder(Pipeline pipeline) {
       this.id = pipeline.id;
-      this.type = pipeline.type;
-      this.factor = pipeline.factor;
+      this.replicationConfig = pipeline.replicationConfig;
       this.state = pipeline.state;
       this.nodeStatus = pipeline.nodeStatus;
       this.nodesInOrder = pipeline.nodesInOrder.get();
@@ -468,13 +457,8 @@ public final class Pipeline {
       return this;
     }
 
-    public Builder setType(ReplicationType type1) {
-      this.type = type1;
-      return this;
-    }
-
-    public Builder setFactor(ReplicationFactor factor1) {
-      this.factor = factor1;
+    public Builder setReplicationConfig(ReplicationConfig replicationConfig) {
+      this.replicationConfig = replicationConfig;
       return this;
     }
 
@@ -482,6 +466,7 @@ public final class Pipeline {
       this.state = state1;
       return this;
     }
+
 
     public Builder setLeaderId(UUID leaderId1) {
       this.leaderId = leaderId1;
@@ -517,12 +502,11 @@ public final class Pipeline {
 
     public Pipeline build() {
       Preconditions.checkNotNull(id);
-      Preconditions.checkNotNull(type);
-      Preconditions.checkNotNull(factor);
+      Preconditions.checkNotNull(replicationConfig);
       Preconditions.checkNotNull(state);
       Preconditions.checkNotNull(nodeStatus);
       Pipeline pipeline =
-          new Pipeline(id, type, factor, state, nodeStatus, suggestedLeaderId);
+          new Pipeline(id, replicationConfig, state, nodeStatus, suggestedLeaderId);
       pipeline.setLeaderId(leaderId);
       // overwrite with original creationTimestamp
       if (creationTimestamp != null) {

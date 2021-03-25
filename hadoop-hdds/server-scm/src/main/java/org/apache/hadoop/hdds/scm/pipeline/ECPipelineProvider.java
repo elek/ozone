@@ -18,22 +18,21 @@
 
 package org.apache.hadoop.hdds.scm.pipeline;
 
+import org.apache.hadoop.hdds.client.ECReplicationConfig;
+import org.apache.hadoop.hdds.protocol.DatanodeDetails;
+import org.apache.hadoop.hdds.scm.node.NodeManager;
+import org.apache.hadoop.hdds.scm.pipeline.Pipeline.PipelineState;
+
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.hadoop.hdds.protocol.DatanodeDetails;
-import org.apache.hadoop.hdds.protocol.proto.HddsProtos.ReplicationFactor;
-import org.apache.hadoop.hdds.protocol.proto.HddsProtos.ReplicationType;
-import org.apache.hadoop.hdds.scm.node.NodeManager;
-import org.apache.hadoop.hdds.scm.pipeline.Pipeline.PipelineState;
-
 /**
  * Implements Api for creating stand alone pipelines.
  */
-public class ECPipelineProvider extends PipelineProvider {
+public class ECPipelineProvider extends PipelineProvider<ECReplicationConfig> {
 
   public ECPipelineProvider(
       NodeManager nodeManager,
@@ -43,13 +42,12 @@ public class ECPipelineProvider extends PipelineProvider {
   }
 
   @Override
-  public Pipeline create(ReplicationFactor factor) throws IOException {
-    List<DatanodeDetails> dns = pickNodesNeverUsed(ReplicationType.STAND_ALONE,
-        ReplicationFactor.ONE);
+  public Pipeline create(ECReplicationConfig replicationConfig) throws IOException {
+    List<DatanodeDetails> dns = pickNodesNeverUsed(replicationConfig);
     if (dns.size() == 0) {
       String e = String
           .format("Cannot create pipeline of factor %d using %d nodes.",
-              factor.getNumber(), dns.size());
+              replicationConfig.getRequiredNodes(), dns.size());
       throw new InsufficientDatanodesException(e);
     }
 
@@ -62,8 +60,7 @@ public class ECPipelineProvider extends PipelineProvider {
     return Pipeline.newBuilder()
         .setId(PipelineID.randomId())
         .setState(PipelineState.OPEN)
-        .setType(ReplicationType.EC)
-        .setFactor(ReplicationFactor.ONE)
+        .setReplicationConfig(replicationConfig)
         .setNodes(nodes)
         .setReplicaIndexes(replicationIndexes)
         .build();
@@ -71,14 +68,13 @@ public class ECPipelineProvider extends PipelineProvider {
 
   @Override
   public Pipeline create(
-      ReplicationFactor factor,
+      ECReplicationConfig replicationConfig,
       List<DatanodeDetails> nodes
   ) {
     return Pipeline.newBuilder()
         .setId(PipelineID.randomId())
         .setState(PipelineState.OPEN)
-        .setType(ReplicationType.EC)
-        .setFactor(factor)
+        .setReplicationConfig(replicationConfig)
         .setNodes(nodes)
         .build();
   }

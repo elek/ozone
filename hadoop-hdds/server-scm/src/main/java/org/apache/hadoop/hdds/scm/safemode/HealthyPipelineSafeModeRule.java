@@ -17,10 +17,10 @@
  */
 package org.apache.hadoop.hdds.scm.safemode;
 
-import java.util.HashSet;
-import java.util.Set;
-
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
 import org.apache.hadoop.hdds.HddsConfigKeys;
+import org.apache.hadoop.hdds.client.RatisReplicationConfig;
 import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
 import org.apache.hadoop.hdds.scm.events.SCMEvents;
@@ -29,11 +29,11 @@ import org.apache.hadoop.hdds.scm.pipeline.PipelineID;
 import org.apache.hadoop.hdds.scm.pipeline.PipelineManager;
 import org.apache.hadoop.hdds.server.events.EventQueue;
 import org.apache.hadoop.hdds.server.events.TypedEvent;
-
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Class defining Safe mode exit criteria for Pipelines.
@@ -77,7 +77,7 @@ public class HealthyPipelineSafeModeRule extends SafeModeExitRule<Pipeline> {
 
     // We want to wait for RATIS THREE factor write pipelines
     int pipelineCount = pipelineManager.getPipelines(
-        HddsProtos.ReplicationType.RATIS, HddsProtos.ReplicationFactor.THREE,
+        new RatisReplicationConfig(HddsProtos.ReplicationFactor.THREE),
         Pipeline.PipelineState.OPEN).size();
 
     // This value will be zero when pipeline count is 0.
@@ -117,7 +117,8 @@ public class HealthyPipelineSafeModeRule extends SafeModeExitRule<Pipeline> {
     // create new pipelines.
     Preconditions.checkNotNull(pipeline);
     if (pipeline.getType() == HddsProtos.ReplicationType.RATIS &&
-        pipeline.getFactor() == HddsProtos.ReplicationFactor.THREE &&
+        ((RatisReplicationConfig) pipeline.getReplicationConfig())
+            .getReplicationFactor() == HddsProtos.ReplicationFactor.THREE &&
         !processedPipelineIDs.contains(pipeline.getId())) {
       getSafeModeMetrics().incCurrentHealthyPipelinesCount();
       currentHealthyPipelineCount++;

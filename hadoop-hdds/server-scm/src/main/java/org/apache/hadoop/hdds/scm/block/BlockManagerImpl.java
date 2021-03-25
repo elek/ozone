@@ -16,26 +16,15 @@
  */
 package org.apache.hadoop.hdds.scm.block;
 
-import javax.management.ObjectName;
-import java.io.IOException;
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.TimeUnit;
-
 import org.apache.hadoop.hdds.client.BlockID;
 import org.apache.hadoop.hdds.client.ContainerBlockID;
+import org.apache.hadoop.hdds.client.ReplicationConfig;
 import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.conf.StorageUnit;
-import org.apache.hadoop.hdds.protocol.proto.HddsProtos.ReplicationFactor;
-import org.apache.hadoop.hdds.protocol.proto.HddsProtos.ReplicationType;
-import org.apache.hadoop.hdds.scm.PipelineRequestInformation;
-import org.apache.hadoop.hdds.scm.ScmConfigKeys;
 import org.apache.hadoop.hdds.scm.PipelineChoosePolicy;
+import org.apache.hadoop.hdds.scm.PipelineRequestInformation;
 import org.apache.hadoop.hdds.scm.ScmConfig;
+import org.apache.hadoop.hdds.scm.ScmConfigKeys;
 import org.apache.hadoop.hdds.scm.container.ContainerInfo;
 import org.apache.hadoop.hdds.scm.container.ContainerManagerV2;
 import org.apache.hadoop.hdds.scm.container.common.helpers.AllocatedBlock;
@@ -49,15 +38,24 @@ import org.apache.hadoop.hdds.scm.server.StorageContainerManager;
 import org.apache.hadoop.metrics2.util.MBeans;
 import org.apache.hadoop.ozone.common.BlockGroup;
 import org.apache.hadoop.util.StringUtils;
+import org.apache.ratis.protocol.exceptions.NotLeaderException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.management.ObjectName;
+import java.io.IOException;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.hadoop.hdds.scm.exceptions.SCMException.ResultCodes.INVALID_BLOCK_SIZE;
 import static org.apache.hadoop.hdds.scm.ha.SequenceIdGenerator.LOCAL_ID;
 import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_BLOCK_DELETING_SERVICE_TIMEOUT;
 import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_BLOCK_DELETING_SERVICE_TIMEOUT_DEFAULT;
-
-import org.apache.ratis.protocol.exceptions.NotLeaderException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 
 /** Block Manager manages the block access for SCM. */
@@ -149,20 +147,19 @@ public class BlockManagerImpl implements BlockManager, BlockmanagerMXBean {
   /**
    * Allocates a block in a container and returns that info.
    *
-   * @param size - Block Size
-   * @param type Replication Type
-   * @param factor - Replication Factor
+   * @param size        - Block Size
    * @param excludeList List of datanodes/containers to exclude during block
    *                    allocation.
    * @return Allocated block
    * @throws IOException on failure.
    */
   @Override
-  public AllocatedBlock allocateBlock(final long size, ReplicationType type,
-      ReplicationFactor factor, String owner, ExcludeList excludeList)
+  public AllocatedBlock allocateBlock(final long size,
+      ReplicationConfig replicationConfig,
+      String owner, ExcludeList excludeList)
       throws IOException {
     if (LOG.isTraceEnabled()) {
-      LOG.trace("Size : {} , type : {}, factor : {} ", size, type, factor);
+      LOG.trace("Size : {} , replicationConfig: {}", size, replicationConfig);
     }
     if (scm.getScmContext().isInSafeMode()) {
       throw new SCMException("SafeModePrecheck failed for allocateBlock",
@@ -190,45 +187,50 @@ public class BlockManagerImpl implements BlockManager, BlockmanagerMXBean {
 
     ContainerInfo containerInfo;
 
+    //TODO we need to continue the refactor to use ReplicationConfig everywhere
+    //in downstream managers.
+
     while (true) {
       List<Pipeline> availablePipelines =
           pipelineManager
-              .getPipelines(type, factor, Pipeline.PipelineState.OPEN,
+              .getPipelines(replicationConfig, Pipeline.PipelineState.OPEN,
                   excludeList.getDatanodes(), excludeList.getPipelineIds());
       Pipeline pipeline = null;
       if (availablePipelines.size() == 0 && !excludeList.isEmpty()) {
         // if no pipelines can be found, try finding pipeline without
         // exclusion
         availablePipelines = pipelineManager
-            .getPipelines(type, factor, Pipeline.PipelineState.OPEN);
+            .getPipelines(replicationConfig, Pipeline.PipelineState.OPEN);
       }
       if (availablePipelines.size() == 0) {
         try {
           // TODO: #CLUTIL Remove creation logic when all replication types and
           // factors are handled by pipeline creator
-          pipeline = pipelineManager.createPipeline(type, factor);
+          pipeline = pipelineManager.createPipeline(replicationConfig);
 
           // wait until pipeline is ready
           pipelineManager.waitPipelineReady(pipeline.getId(), 0);
         } catch (SCMException se) {
-          LOG.warn("Pipeline creation failed for type:{} factor:{}. " +
-              "Datanodes may be used up.", type, factor, se);
+          LOG.warn("Pipeline creation failed for replicationConfig {} " +
+              "Datanodes may be used up.", replicationConfig, se);
           break;
         } catch (IOException e) {
-          LOG.warn("Pipeline creation failed for type:{} factor:{}. Retrying " +
-                  "get pipelines call once.", type, factor, e);
+          LOG.warn("Pipeline creation failed for replicationConfig: {}. Retrying " +
+                  "get pipelines call once.", replicationConfig, e);
           availablePipelines = pipelineManager
-              .getPipelines(type, factor, Pipeline.PipelineState.OPEN,
+              .getPipelines(replicationConfig, Pipeline.PipelineState.OPEN,
                   excludeList.getDatanodes(), excludeList.getPipelineIds());
           if (availablePipelines.size() == 0 && !excludeList.isEmpty()) {
             // if no pipelines can be found, try finding pipeline without
             // exclusion
             availablePipelines = pipelineManager
-                .getPipelines(type, factor, Pipeline.PipelineState.OPEN);
+                .getPipelines(replicationConfig, Pipeline.PipelineState.OPEN);
           }
           if (availablePipelines.size() == 0) {
-            LOG.info("Could not find available pipeline of type:{} and " +
-                "factor:{} even after retrying", type, factor);
+            LOG.info(
+                "Could not find available pipeline of replicationConfig: {} "
+                    + "even after retrying",
+                replicationConfig);
             break;
           }
         }
@@ -255,8 +257,8 @@ public class BlockManagerImpl implements BlockManager, BlockmanagerMXBean {
     // we have tried all strategies we know and but somehow we are not able
     // to get a container for this block. Log that info and return a null.
     LOG.error(
-        "Unable to allocate a block for the size: {}, type: {}, factor: {}",
-        size, type, factor);
+        "Unable to allocate a block for the size: {}, replicationConfig: {}",
+        size, replicationConfig);
     return null;
   }
 
