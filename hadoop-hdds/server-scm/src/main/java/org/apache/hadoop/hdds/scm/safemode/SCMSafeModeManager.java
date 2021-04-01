@@ -197,8 +197,8 @@ public class SCMSafeModeManager implements SafeModeManager {
       validatedRules.add(ruleName);
       if (preCheckRules.contains(ruleName)) {
         validatedPreCheckRules.add(ruleName);
+        LOG.info("{} rule is successfully validated", ruleName);
       }
-      LOG.info("{} rule is successfully validated", ruleName);
     } else {
       // This should never happen
       LOG.error("No Such Exit rule {}", ruleName);
