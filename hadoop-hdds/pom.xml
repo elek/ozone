@@ -126,6 +126,12 @@ https://maven.apache.org/xsd/maven-4.0.0.xsd">
 
       <dependency>
         <groupId>org.apache.ozone</groupId>
+        <artifactId>ozone-common</artifactId>
+        <version>${hdds.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>org.apache.ozone</groupId>
         <artifactId>hdds-server-scm</artifactId>
         <version>${hdds.version}</version>
       </dependency>
