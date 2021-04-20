@@ -28,6 +28,8 @@ import org.apache.hadoop.http.HttpConfig;
 import org.apache.ratis.proto.RaftProtos.ReplicationLevel;
 import org.apache.ratis.util.TimeDuration;
 
+import java.util.concurrent.TimeUnit;
+
 /**
  * This class contains constants for configuration keys used in Ozone.
  */
@@ -333,7 +335,7 @@ public final class OzoneConfigKeys {
       "hdds.datanode.replication.work.dir";
 
 
-  public static final int OZONE_CLIENT_BYTES_PER_CHECKSUM_MIN_SIZE = 256 * 1024;
+  public static final int OZONE_CLIENT_BYTES_PER_CHECKSUM_MIN_SIZE = 16 * 1024;
 
   public static final String OZONE_CLIENT_READ_TIMEOUT
           = "ozone.client.read.timeout";
@@ -439,6 +441,11 @@ public final class OzoneConfigKeys {
       "ozone.om.keyname.character.check.enabled";
   public static final boolean OZONE_OM_KEYNAME_CHARACTER_CHECK_ENABLED_DEFAULT =
       false;
+
+  public static final String OZONE_CLIENT_KEY_PROVIDER_CACHE_EXPIRY =
+      "ozone.client.key.provider.cache.expiry";
+  public static final long OZONE_CLIENT_KEY_PROVIDER_CACHE_EXPIRY_DEFAULT =
+      TimeUnit.DAYS.toMillis(10); // 10 days
 
   /**
    * There is no need to instantiate this class.
