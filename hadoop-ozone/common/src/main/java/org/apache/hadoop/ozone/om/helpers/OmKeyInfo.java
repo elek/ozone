@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.Objects;
 
 import org.apache.hadoop.fs.FileEncryptionInfo;
+import org.apache.hadoop.hdds.client.BlockID;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
 import org.apache.hadoop.ozone.OzoneAcl;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.KeyInfo;
@@ -34,6 +35,8 @@ import org.apache.hadoop.ozone.protocolPB.OMPBHelper;
 import org.apache.hadoop.util.Time;
 
 import com.google.common.base.Preconditions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Args for key block. The block instance for the key requested in putKey.
@@ -41,6 +44,7 @@ import com.google.common.base.Preconditions;
  * datanode. Also, this is the metadata written to om.db on server side.
  */
 public final class OmKeyInfo extends WithObjectID {
+  private static final Logger LOG = LoggerFactory.getLogger(OmKeyInfo.class);
   private final String volumeName;
   private final String bucketName;
   // name of key client specified
@@ -147,10 +151,31 @@ public final class OmKeyInfo extends WithObjectID {
    */
   public void updateLocationInfoList(List<OmKeyLocationInfo> locationInfoList,
       boolean isMpu) {
+    updateLocationInfoList(locationInfoList, isMpu, false);
+  }
+
+  /**
+   * updates the length of the each block in the list given.
+   * This will be called when the key is being committed to OzoneManager.
+   *
+   * @param locationInfoList list of locationInfo
+   */
+  public void updateLocationInfoList(List<OmKeyLocationInfo> locationInfoList,
+      boolean isMpu, boolean skipBlockIDCheck) {
     long latestVersion = getLatestVersionLocations().getVersion();
     OmKeyLocationInfoGroup keyLocationInfoGroup = getLatestVersionLocations();
 
     keyLocationInfoGroup.setMultipartKey(isMpu);
+
+    // Compare user given block location against allocatedBlockLocations
+    // present in OmKeyInfo.
+    List<OmKeyLocationInfo> updatedBlockLocations;
+    if (skipBlockIDCheck) {
+      updatedBlockLocations = locationInfoList;
+    } else {
+      updatedBlockLocations =
+          verifyAndGetKeyLocations(locationInfoList, keyLocationInfoGroup);
+    }
     // Updates the latest locationList in the latest version only with
     // given locationInfoList here.
     // TODO : The original allocated list and the updated list here may vary
@@ -159,12 +184,39 @@ public final class OmKeyInfo extends WithObjectID {
     // need to be garbage collected in case the ozone client dies.
     keyLocationInfoGroup.removeBlocks(latestVersion);
     // set each of the locationInfo object to the latest version
-    locationInfoList.forEach(omKeyLocationInfo -> omKeyLocationInfo
+    updatedBlockLocations.forEach(omKeyLocationInfo -> omKeyLocationInfo
         .setCreateVersion(latestVersion));
-    keyLocationInfoGroup.addAll(latestVersion, locationInfoList);
+    keyLocationInfoGroup.addAll(latestVersion, updatedBlockLocations);
   }
 
+  private List<OmKeyLocationInfo> verifyAndGetKeyLocations(
+      List<OmKeyLocationInfo> locationInfoList,
+      OmKeyLocationInfoGroup keyLocationInfoGroup) {
 
+    List<OmKeyLocationInfo> allocatedBlockLocations =
+        keyLocationInfoGroup.getBlocksLatestVersionOnly();
+    List<OmKeyLocationInfo> updatedBlockLocations = new ArrayList<>();
+
+    for (OmKeyLocationInfo modifiedLocationInfo : locationInfoList) {
+      boolean unKnownBlockID = true;
+      BlockID modifiedBlockID = modifiedLocationInfo.getBlockID();
+      for (OmKeyLocationInfo existingLocationInfo : allocatedBlockLocations) {
+        BlockID existingBlockID = existingLocationInfo.getBlockID();
+        if (modifiedBlockID.getContainerBlockID()
+            .equals(existingBlockID.getContainerBlockID())) {
+          updatedBlockLocations.add(modifiedLocationInfo);
+          unKnownBlockID = false;
+          break;
+        }
+      }
+      if (unKnownBlockID) {
+        LOG.warn("UnKnown BlockLocation:{}, where the blockID of given "
+            + "location doesn't match with the stored/allocated block of"
+            + " keyName:{}", modifiedLocationInfo, keyName);
+      }
+    }
+    return updatedBlockLocations;
+  }
 
   /**
    * Append a set of blocks to the latest version. Note that these blocks are
