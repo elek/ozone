@@ -525,7 +525,13 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
     bucketManager = new BucketManagerImpl(metadataManager, getKmsProvider(),
         isRatisEnabled);
     if (secConfig.isSecurityEnabled()) {
-      s3SecretManager = new S3SecretManagerImpl(configuration, metadataManager);
+      //      s3SecretManager = new S3SecretManagerImpl(configuration,
+      //     metadataManager);
+      VaultS3SecretManager vaultS3SecretManager =
+          configuration.getObject(VaultS3SecretManager.class);
+      vaultS3SecretManager.init();
+
+      s3SecretManager = vaultS3SecretManager;
       delegationTokenMgr = createDelegationTokenSecretManager(configuration);
     }
 
@@ -703,6 +709,7 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
         .setTokenRemoverScanInterval(tokenRemoverScanInterval)
         .setService(omRpcAddressTxt)
         .setS3SecretManager(s3SecretManager)
+        .setMetadataManager(metadataManager)
         .setCertificateClient(certClient)
         .setOmServiceId(omNodeDetails.getServiceId())
         .build();

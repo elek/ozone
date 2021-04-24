@@ -105,4 +105,18 @@ services:
       ENSURE_SCM_INITIALIZED: /data/metadata/scm/current/VERSION
       OZONE-SITE.XML_hdds.scm.safemode.min.datanode: "${OZONE_SAFEMODE_MIN_DATANODES:-1}"
       OZONE_OPTS:
-    command: ["/opt/hadoop/bin/ozone","scm"]
+    command: [ "/opt/hadoop/bin/ozone","scm" ]
+  vault:
+    image: vault
+    hostname: vault
+    command: [ "vault", "server", "-config", "/opt/hadoop/compose/ozonesecure/vault.hcl" ]
+    cap_add:
+      - IPC_LOCK
+    volumes:
+      - ../..:/opt/hadoop
+      - ./vault:/data
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: root
+    ports:
+      - 8200:8200
+

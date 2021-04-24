@@ -38,6 +38,9 @@ OZONE-SITE.XML_ozone.recon.db.dir=/data/metadata/recon
 OZONE-SITE.XML_ozone.recon.om.snapshot.task.initial.delay=20s
 OZONE-SITE.XML_ozone.recon.address=recon:9891
 
+OZONE-SITE.XML_ozone.s3.auth.vault.host=http://vault:8200
+OZONE-SITE.XML_ozone.s3.auth.vault.token=root
+
 OZONE-SITE.XML_ozone.security.enabled=true
 OZONE-SITE.XML_ozone.acl.enabled=true
 OZONE-SITE.XML_ozone.acl.authorizer.class=org.apache.hadoop.ozone.security.acl.OzoneNativeAuthorizer

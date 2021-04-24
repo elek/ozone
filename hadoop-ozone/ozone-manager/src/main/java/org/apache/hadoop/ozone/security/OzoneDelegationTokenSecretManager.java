@@ -35,6 +35,7 @@ import org.apache.hadoop.hdds.security.x509.certificate.client.CertificateClient
 import org.apache.hadoop.hdds.security.x509.exceptions.CertificateException;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.ozone.om.OMConfigKeys;
+import org.apache.hadoop.ozone.om.OMMetadataManager;
 import org.apache.hadoop.ozone.om.S3SecretManager;
 import org.apache.hadoop.ozone.om.S3SecretManagerImpl;
 import org.apache.hadoop.ozone.om.exceptions.OMException;
@@ -65,7 +66,7 @@ public class OzoneDelegationTokenSecretManager
       .getLogger(OzoneDelegationTokenSecretManager.class);
   private final Map<OzoneTokenIdentifier, TokenInfo> currentTokens;
   private final OzoneSecretStore store;
-  private final S3SecretManagerImpl s3SecretManager;
+  private final S3SecretManager s3SecretManager;
   private Thread tokenRemoverThread;
   private final long tokenRemoverScanInterval;
   private String omCertificateSerialId;
@@ -90,9 +91,9 @@ public class OzoneDelegationTokenSecretManager
     this.omServiceId = b.omServiceId;
     currentTokens = new ConcurrentHashMap();
     this.tokenRemoverScanInterval = b.tokenRemoverScanInterval;
-    this.s3SecretManager = (S3SecretManagerImpl) b.s3SecretManager;
+    this.s3SecretManager = b.s3SecretManager;
     this.store = new OzoneSecretStore(b.ozoneConf,
-        this.s3SecretManager.getOmMetadataManager());
+        b.metadataManager);
     isRatisEnabled = b.ozoneConf.getBoolean(
         OMConfigKeys.OZONE_OM_RATIS_ENABLE_KEY,
         OMConfigKeys.OZONE_OM_RATIS_ENABLE_DEFAULT);
@@ -112,6 +113,7 @@ public class OzoneDelegationTokenSecretManager
     private S3SecretManager s3SecretManager;
     private CertificateClient certClient;
     private String omServiceId;
+    private OMMetadataManager metadataManager;
 
     public OzoneDelegationTokenSecretManager build() throws IOException {
       return new OzoneDelegationTokenSecretManager(this);
@@ -129,6 +131,11 @@ public class OzoneDelegationTokenSecretManager
 
     public Builder setTokenRenewInterval(long dtRenewInterval) {
       this.tokenRenewInterval = dtRenewInterval;
+      return this;
+    }
+
+    public Builder setMetadataManager(OMMetadataManager mm) {
+      this.metadataManager = mm;
       return this;
     }
 
