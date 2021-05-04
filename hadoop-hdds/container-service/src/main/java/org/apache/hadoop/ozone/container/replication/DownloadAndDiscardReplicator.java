@@ -17,7 +17,11 @@
  */
 package org.apache.hadoop.ozone.container.replication;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Supplier;
 
 import org.apache.hadoop.hdds.conf.ConfigurationSource;
@@ -29,64 +33,44 @@ import org.apache.hadoop.ozone.container.common.impl.ContainerSet;
 import org.apache.hadoop.ozone.container.common.volume.HddsVolume;
 import org.apache.hadoop.ozone.container.common.volume.VolumeSet;
 import org.apache.hadoop.ozone.container.keyvalue.KeyValueContainerData;
+import org.apache.hadoop.ozone.container.keyvalue.TarContainerPacker;
+import org.apache.hadoop.ozone.container.ozoneimpl.ContainerController;
 import org.apache.hadoop.ozone.container.replication.ReplicationTask.Status;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Fake replicator for downloading the data and ignoring it.
  * <p>
  * Usable only for testing.
  */
-public class DownloadAndDiscardReplicator extends DownloadAndImportReplicator {
+public class DownloadAndDiscardReplicator implements ContainerReplicator {
 
-  public DownloadAndDiscardReplicator(
-      ConfigurationSource config,
-      Supplier<String> scmId,
-      ContainerSet containerSet,
-      ContainerDownloader downloader,
-      VolumeSet volumeSet
-  ) {
-    super(config, scmId, containerSet, downloader, volumeSet);
+  private static final Logger LOG = LoggerFactory.getLogger(DownloadAndDiscardReplicator.class);
+  private final ContainerDownloader downloader;
+
+  public DownloadAndDiscardReplicator(ContainerDownloader downloader) {
+    this.downloader = downloader;
   }
 
   @Override
   public void replicate(ReplicationTask task) {
     long containerID = task.getContainerId();
-    if (scmId.get() == null) {
-      LOG.error("Replication task is called before first SCM call");
-      task.setStatus(Status.FAILED);
-    }
+
     List<DatanodeDetails> sourceDatanodes = task.getSources();
 
-    LOG.info("Starting downloading container {} from {}", containerID,
+    LOG.info("Starting replication of container {} from {}", containerID,
         sourceDatanodes);
 
+    CompletableFuture<Path> tempTarFile = downloader
+        .getContainerDataFromReplicas(containerID,
+            sourceDatanodes);
     try {
-
-      long maxContainerSize = (long) config.getStorageSize(
-          ScmConfigKeys.OZONE_SCM_CONTAINER_SIZE,
-          ScmConfigKeys.OZONE_SCM_CONTAINER_SIZE_DEFAULT, StorageUnit.BYTES);
-
-      KeyValueContainerData containerData =
-          new KeyValueContainerData(containerID,
-              ChunkLayOutVersion.FILE_PER_BLOCK, maxContainerSize, "", "");
-
-      //choose a volume
-      final HddsVolume volume = volumeChoosingPolicy
-          .chooseVolume(volumeSet.getVolumesList(), maxContainerSize);
-
-      //fill the path fields
-      containerData.assignToVolume(scmId.get(), volume);
-
-      //download data
-      final KeyValueContainerData loadedContainerData =
-          downloader
-              .getContainerDataFromReplicas(containerData, sourceDatanodes);
-
-      LOG.info("Container {} is download successfully", containerID);
-      task.setStatus(Status.DONE);
+      final Path containerPath = tempTarFile.get();
+      Files.delete(containerPath);
+      LOG.info("Container is downloaded but deleted, as you wished " + containerPath);
     } catch (Exception e) {
-      LOG.error("Container {} download was unsuccessful.", containerID, e);
-      task.setStatus(Status.FAILED);
+      LOG.error("Error on downloading container", e);
     }
   }
 }

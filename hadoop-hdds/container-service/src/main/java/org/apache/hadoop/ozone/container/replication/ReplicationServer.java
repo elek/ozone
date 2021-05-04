@@ -53,9 +53,9 @@ public class ReplicationServer {
 
   private CertificateClient caClient;
 
-  private ContainerController controller;
-
   private int port;
+
+  private ContainerReplicationSource replicationSource;
 
   public ReplicationServer(
       ContainerController controller,
@@ -63,21 +63,31 @@ public class ReplicationServer {
       SecurityConfig secConf,
       CertificateClient caClient
   ) {
+    this(new OnDemandContainerReplicationSource(controller), replicationConfig, secConf, caClient);
+  }
+
+  public ReplicationServer(
+      ContainerReplicationSource replicationSource,
+      ReplicationConfig replicationConfig,
+      SecurityConfig secConf,
+      CertificateClient caClient
+  ) {
+    this.replicationSource = replicationSource;
     this.secConf = secConf;
     this.caClient = caClient;
-    this.controller = controller;
     this.port = replicationConfig.getPort();
     init();
   }
 
   public void init() {
+
     NettyServerBuilder nettyServerBuilder = NettyServerBuilder.forPort(port)
         .maxInboundMessageSize(OzoneConsts.OZONE_SCM_CHUNK_MAX_SIZE)
         .addService(ServerInterceptors.intercept(new GrpcReplicationService(
-            new OnDemandContainerReplicationSource(controller)
+            replicationSource
         ), new GrpcServerInterceptor()));
 
-    if (secConf.isSecurityEnabled()) {
+    if (secConf!=null && secConf.isSecurityEnabled()) {
       try {
         SslContextBuilder sslContextBuilder = SslContextBuilder.forServer(
             caClient.getPrivateKey(), caClient.getCertificate());

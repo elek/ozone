@@ -59,33 +59,31 @@ public class ClosedContainerSelfStream extends BaseFreonGenerator implements
   private ReplicationSupervisor supervisor;
 
   private Timer timer;
-
-  private List<ReplicationTask> replicationTasks;
+  private ReplicationServer replicationServer;
+  private ContainerReplicator replicator;
 
   @Override
   public Void call() throws Exception {
 
     OzoneConfiguration conf = createOzoneConfiguration();
 
-    final Collection<String> datanodeStorageDirs =
-        MutableVolumeSet.getDatanodeStorageDirs(conf);
 
-    for (String dir : datanodeStorageDirs) {
-      checkDestinationDirectory(dir);
-    }
+    //server
+    replicationServer = new ReplicationServer(new ClosedContainerStreamGenerator(), new ReplicationServer.ReplicationConfig(), null, null);
+    replicationServer.start();
 
-    startReplicationServer();
+
+    //client
+    initializeReplicationSupervisor(conf);
 
     init();
 
     timer = getMetrics().timer("stream-container");
     runTests(this::replicateContainer);
+    replicationServer.stop();
     return null;
   }
 
-  private void startReplicationServer() {
-    ReplicationServer();
-  }
 
   /**
    * Check id target directory is not re-used.
@@ -117,22 +115,24 @@ public class ClosedContainerSelfStream extends BaseFreonGenerator implements
     MutableVolumeSet volumeSet = new MutableVolumeSet(fakeDatanodeUuid, conf);
 
     final UUID scmId = UUID.randomUUID();
-    ContainerReplicator replicator;
 
-    replicator = new DownloadAndDiscardReplicator(
-        conf,
-        () -> scmId.toString(),
-        containerSet,
-        new NullContainerDownloader(conf, null),
-        volumeSet);
+    replicator = new DownloadAndDiscardReplicator(new SimpleContainerDownloader(conf, null));
     supervisor = new ReplicationSupervisor(containerSet, replicator, 10);
   }
 
   private void replicateContainer(long counter) throws Exception {
     timer.time(() -> {
+      List<DatanodeDetails> datanodes = new ArrayList<>();
+      datanodes.add(DatanodeDetails.newBuilder()
+          .setHostName("localhost")
+          .setIpAddress("127.0.0.1")
+          .setUuid(UUID.randomUUID())
+          .addPort(DatanodeDetails.newPort(DatanodeDetails.Port.Name.REPLICATION, replicationServer.getPort()))
+          .build());
       final ReplicationTask replicationTask =
-          replicationTasks.get((int) counter);
-      supervisor.new TaskRunner(replicationTask).run();
+          new ReplicationTask(counter, datanodes);
+
+      replicator.replicate(replicationTask);
       return null;
     });
   }

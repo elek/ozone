@@ -97,6 +97,10 @@ public class DownloadAndImportReplicator implements ContainerReplicator {
     }
   }
 
+  public ContainerDownloader getDownloader() {
+    return downloader;
+  }
+
   @Override
   public void replicate(ReplicationTask task) {
     long containerID = task.getContainerId();

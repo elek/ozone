@@ -23,6 +23,7 @@ import java.security.cert.X509Certificate;
 
 import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
+import org.apache.hadoop.hdds.security.x509.certificate.client.CertificateClient;
 import org.apache.hadoop.ozone.container.keyvalue.KeyValueContainerData;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -36,9 +37,9 @@ public class NullContainerDownloader extends SimpleContainerDownloader {
 
   public NullContainerDownloader(
       ConfigurationSource conf,
-      X509Certificate caCert
+      CertificateClient certClient
   ) {
-    super(conf, caCert);
+    super(conf, certClient);
   }
 
   @VisibleForTesting
@@ -46,7 +47,6 @@ public class NullContainerDownloader extends SimpleContainerDownloader {
       KeyValueContainerData preCreated,
       DatanodeDetails datanode
   ) throws IOException {
-
     return preCreated;
   }
 
