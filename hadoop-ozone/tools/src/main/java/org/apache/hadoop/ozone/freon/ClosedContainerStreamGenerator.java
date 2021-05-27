@@ -7,7 +7,7 @@ import java.io.OutputStream;
 
 public class ClosedContainerStreamGenerator implements ContainerReplicationSource {
 
-  private ContentGenerator generator = new ContentGenerator(5L * 1024 * 1024 * 1024, 10 * 1024 * 1024);
+  private ContentGenerator generator = new ContentGenerator(1L * 1024 * 1024 * 1024, 10 * 1024 * 1024);
 
   @Override
   public void prepare(long containerId) {

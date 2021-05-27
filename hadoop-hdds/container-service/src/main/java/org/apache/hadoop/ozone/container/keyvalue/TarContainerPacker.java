@@ -237,14 +237,12 @@ public class TarContainerPacker
 
   private static InputStream decompress(InputStream input)
       throws CompressorException {
-    return new CompressorStreamFactory()
-        .createCompressorInputStream(CompressorStreamFactory.GZIP, input);
+  return input;
   }
 
   private static OutputStream compress(OutputStream output)
       throws CompressorException {
-    return new CompressorStreamFactory()
-        .createCompressorOutputStream(CompressorStreamFactory.GZIP, output);
+    return output;
   }
 
 }

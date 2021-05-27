@@ -108,13 +108,8 @@ public class ClosedContainerSelfStream extends BaseFreonGenerator implements
   @NotNull
   private void initializeReplicationSupervisor(ConfigurationSource conf)
       throws IOException {
-    String fakeDatanodeUuid = UUID.randomUUID().toString();
 
     ContainerSet containerSet = new ContainerSet();
-
-    MutableVolumeSet volumeSet = new MutableVolumeSet(fakeDatanodeUuid, conf);
-
-    final UUID scmId = UUID.randomUUID();
 
     replicator = new DownloadAndDiscardReplicator(new SimpleContainerDownloader(conf, null));
     supervisor = new ReplicationSupervisor(containerSet, replicator, 10);
