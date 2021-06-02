@@ -157,11 +157,6 @@ public class GrpcReplicationClient implements AutoCloseable{
     @Override
     public void onNext(CopyContainerResponseProto chunk) {
       try {
-        try {
-          Thread.sleep(1_000);
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
         chunk.getData().writeTo(stream);
       } catch (IOException e) {
         response.completeExceptionally(e);
