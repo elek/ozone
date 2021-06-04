@@ -717,6 +717,7 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
         .setTokenRemoverScanInterval(tokenRemoverScanInterval)
         .setService(omRpcAddressTxt)
         .setS3SecretManager(s3SecretManager)
+        .setMetadataManager(metadataManager)
         .setCertificateClient(certClient)
         .setOmServiceId(omNodeDetails.getServiceId())
         .build();
