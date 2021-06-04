@@ -201,6 +201,7 @@ import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_ACL_AUTHORIZER_CLASS
 import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_ACL_ENABLED;
 import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_ACL_ENABLED_DEFAULT;
 import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_ADMINISTRATORS;
+import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_ADMINISTRATORS_WILDCARD;
 import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_KEY_PREALLOCATION_BLOCKS_MAX;
 import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_KEY_PREALLOCATION_BLOCKS_MAX_DEFAULT;
 import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_SCM_BLOCK_SIZE;
@@ -274,6 +275,11 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
   private BucketManager bucketManager;
   private KeyManager keyManager;
   private PrefixManagerImpl prefixManager;
+
+  /**
+   * OM super user / admin list.
+   */
+  private final Collection<String> omAdminUsernames;
 
   private final OMMetrics metrics;
   private final ProtocolMessageMetrics<ProtocolMessageEnum>
@@ -441,6 +447,9 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
       blockTokenMgr = createBlockTokenSecretManager(configuration);
     }
 
+    // Get admin list
+    omAdminUsernames = getOzoneAdminsFromConfig(configuration);
+
     instantiateServices();
 
     // Create special volume s3v which is required for S3G.
@@ -548,7 +557,7 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
         authorizer.setBucketManager(bucketManager);
         authorizer.setKeyManager(keyManager);
         authorizer.setPrefixManager(prefixManager);
-        authorizer.setOzoneAdmins(getOzoneAdmins(configuration));
+        authorizer.setOzoneAdmins(omAdminUsernames);
         authorizer.setAllowListAllVolumes(allowListAllVolumes);
       }
     } else {
@@ -2699,6 +2708,15 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
   }
 
   @Override
+  /**
+   * {@inheritDoc}
+   */
+  public void revokeS3Secret(String kerberosID) {
+    throw new UnsupportedOperationException("OzoneManager does not require " +
+            "this to be implemented. As write requests use a new approach");
+  }
+
+  @Override
   public OmMultipartInfo initiateMultipartUpload(OmKeyArgs keyArgs) throws
       IOException {
 
@@ -3531,9 +3549,9 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
   }
 
   /**
-   * Return list of OzoneAdministrators.
+   * Return list of OzoneAdministrators from config.
    */
-  Collection<String> getOzoneAdmins(OzoneConfiguration conf)
+  Collection<String> getOzoneAdminsFromConfig(OzoneConfiguration conf)
       throws IOException {
     Collection<String> ozAdmins =
         conf.getTrimmedStringCollection(OZONE_ADMINISTRATORS);
@@ -3542,6 +3560,27 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
       ozAdmins.add(omSPN);
     }
     return ozAdmins;
+  }
+
+  /**
+   * Return the list of Ozone administrators in effect.
+   */
+  Collection<String> getOmAdminUsernames() {
+    return omAdminUsernames;
+  }
+
+  /**
+   * Return true if a UserGroupInformation is OM admin, false otherwise.
+   * @param callerUgi Caller UserGroupInformation
+   */
+  public boolean isAdmin(UserGroupInformation callerUgi) {
+    if (callerUgi == null || omAdminUsernames == null) {
+      return false;
+    }
+
+    return omAdminUsernames.contains(callerUgi.getShortUserName())
+        || omAdminUsernames.contains(callerUgi.getUserName())
+        || omAdminUsernames.contains(OZONE_ADMINISTRATORS_WILDCARD);
   }
 
   /**

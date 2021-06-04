@@ -323,6 +323,7 @@ public final class OzoneConsts {
   public static final String MAX_PARTS = "maxParts";
   public static final String S3_BUCKET = "s3Bucket";
   public static final String S3_GETSECRET_USER = "S3GetSecretUser";
+  public static final String S3_REVOKESECRET_USER = "S3RevokeSecretUser";
   public static final String RENAMED_KEYS_MAP = "renamedKeysMap";
   public static final String UNRENAMED_KEYS_MAP = "unRenamedKeysMap";
   public static final String MULTIPART_UPLOAD_PART_NUMBER = "partNumber";
@@ -395,7 +396,6 @@ public final class OzoneConsts {
   public static final String TRANSACTION_INFO_SPLIT_KEY = "#";
 
   public static final String CONTAINER_DB_TYPE_ROCKSDB = "RocksDB";
-  public static final String CONTAINER_DB_TYPE_LEVELDB = "LevelDB";
 
   // SCM HA
   public static final String SCM_SERVICE_ID_DEFAULT = "scmServiceIdDefault";

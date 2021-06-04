@@ -60,6 +60,9 @@ import static org.apache.hadoop.hdds.scm.ScmConfigKeys.OZONE_SCM_SECURITY_SERVIC
 import static org.apache.hadoop.hdds.scm.ScmConfigKeys.OZONE_SCM_SECURITY_SERVICE_PORT_KEY;
 import static org.apache.hadoop.hdds.scm.ScmConfigKeys.OZONE_SCM_SERVICE_IDS_KEY;
 
+/**
+ * TODO: javadoc.
+ */
 public class SCMHANodeDetails {
   public static final Logger LOG =
       LoggerFactory.getLogger(SCMHANodeDetails.class);
@@ -200,12 +203,15 @@ public class SCMHANodeDetails {
 
         String ratisPortKey = ConfUtils.addKeySuffixes(OZONE_SCM_RATIS_PORT_KEY,
             serviceId, nodeId);
-        int ratisPort = conf.getInt(ratisPortKey, OZONE_SCM_RATIS_PORT_DEFAULT);
+        int ratisPort = conf.getInt(ratisPortKey,
+            conf.getInt(OZONE_SCM_RATIS_PORT_KEY,
+                OZONE_SCM_RATIS_PORT_DEFAULT));
 
         String grpcPortKey = ConfUtils
             .addKeySuffixes(ScmConfigKeys.OZONE_SCM_GRPC_PORT_KEY, serviceId,
                 nodeId);
-        int grpcPort = conf.getInt(grpcPortKey, OZONE_SCM_GRPC_PORT_DEFAULT);
+        int grpcPort = conf.getInt(grpcPortKey,
+            conf.getInt(OZONE_SCM_GRPC_PORT_KEY, OZONE_SCM_GRPC_PORT_DEFAULT));
 
         InetSocketAddress addr = null;
         try {
