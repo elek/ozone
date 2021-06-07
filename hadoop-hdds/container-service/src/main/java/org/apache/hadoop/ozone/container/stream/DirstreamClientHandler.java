@@ -98,12 +98,16 @@ public class DirstreamClientHandler extends ChannelInboundHandlerAdapter {
       }
     }
     if (!headerMode) {
-      final int readableBytes = buffer.readableBytes();
-      if (remaining >= readableBytes) {
+      //write directly to a file
+      int readableBytes = (int) Math.min(remaining, buffer.readableBytes());
+      if (readableBytes > 0) {
         remaining -=
             buffer.readBytes(destFileChannel, readableBytes);
-      } else {
-        remaining -= buffer.readBytes(destFileChannel, (int) remaining);
+        readableBytes = buffer.readableBytes();
+      }
+
+      if (remaining == 0) {
+        //all the content is written to the file, wait for the next header
         currentFileName = new StringBuilder();
         headerMode = true;
         destFile.close();

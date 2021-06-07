@@ -34,11 +34,16 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.DefaultFileRegion;
 import io.netty.util.ByteProcessor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Protocol definition of the streaming.
  */
 public class DirstreamServerHandler extends ChannelInboundHandlerAdapter {
+
+  private static final Logger LOG =
+      LoggerFactory.getLogger(DirstreamServerHandler.class);
 
   public static final String END_MARKER = "0 END";
 
@@ -99,13 +104,17 @@ public class DirstreamServerHandler extends ChannelInboundHandlerAdapter {
       ChannelFuture nextFuture = ctx.writeAndFlush(
           new DefaultFileRegion(file.toFile(), 0, fileSize));
       if (currentIndex == entriesToWrite.size() - 1) {
-        nextFuture.addListener(a ->
-            ctx.writeAndFlush(
-                Unpooled.wrappedBuffer(
-                    END_MARKER.getBytes(StandardCharsets.UTF_8)))
-                .addListener(b -> {
-                  ctx.channel().close();
-                }));
+        nextFuture.addListener(a -> {
+          if (!a.isSuccess()) {
+            LOG.error("Error on streaming file", a.cause());
+          }
+          ctx.writeAndFlush(
+              Unpooled.wrappedBuffer(
+                  END_MARKER.getBytes(StandardCharsets.UTF_8)))
+              .addListener(b -> {
+                ctx.channel().close();
+              });
+        });
       } else {
         nextFuture.addListener(
             a -> writeOneElement(ctx, entriesToWrite,
