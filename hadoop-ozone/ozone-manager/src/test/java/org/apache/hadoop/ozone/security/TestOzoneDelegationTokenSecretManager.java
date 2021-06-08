@@ -75,6 +75,7 @@ public class TestOzoneDelegationTokenSecretManager {
 
   @Rule
   public TemporaryFolder folder = new TemporaryFolder();
+  private OMMetadataManager metadataManager;
 
   @Before
   public void setUp() throws Exception {
@@ -87,7 +88,7 @@ public class TestOzoneDelegationTokenSecretManager {
     final Map<String, String> s3Secrets = new HashMap<>();
     s3Secrets.put("testuser1", s3Secret);
     s3Secrets.put("abc", "djakjahkd");
-    OMMetadataManager metadataManager = new OmMetadataManagerImpl(conf);
+    metadataManager = new OmMetadataManagerImpl(conf);
     s3SecretManager = new S3SecretManagerImpl(conf, metadataManager) {
       @Override
       public S3SecretValue getS3Secret(String kerberosID) {
@@ -414,6 +415,7 @@ public class TestOzoneDelegationTokenSecretManager {
         .setTokenRemoverScanInterval(tokenRemoverScanTime)
         .setService(serviceRpcAdd)
         .setS3SecretManager(s3SecretManager)
+        .setMetadataManager(metadataManager)
         .setCertificateClient(certificateClient)
         .setOmServiceId(OzoneConsts.OM_SERVICE_ID_DEFAULT)
         .build();
