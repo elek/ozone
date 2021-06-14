@@ -273,7 +273,7 @@ public class OzoneContainer {
    *
    * @throws IOException
    */
-  public void start(String clusterId) throws IOException {
+  public void start(String clusterId) throws IOException, InterruptedException {
     // If SCM HA is enabled, OzoneContainer#start() will be called multi-times
     // from VersionEndpointTask. The first call should do the initializing job,
     // the successive calls should wait until OzoneContainer is initialized.

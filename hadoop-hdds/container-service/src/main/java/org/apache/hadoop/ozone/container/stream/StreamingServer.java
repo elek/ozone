@@ -64,38 +64,35 @@ public class StreamingServer implements AutoCloseable {
     this.sslContext = sslContext;
   }
 
-  public void start() {
-    try {
-      ServerBootstrap b = new ServerBootstrap();
-      bossGroup = new NioEventLoopGroup(100);
-      workerGroup = new NioEventLoopGroup(100);
+  public void start() throws InterruptedException {
+    ServerBootstrap b = new ServerBootstrap();
+    bossGroup = new NioEventLoopGroup(100);
+    workerGroup = new NioEventLoopGroup(100);
 
-      b.group(bossGroup, workerGroup)
-          .channel(NioServerSocketChannel.class)
-          .option(ChannelOption.SO_BACKLOG, 100)
+    b.group(bossGroup, workerGroup)
+        .channel(NioServerSocketChannel.class)
+        .option(ChannelOption.SO_BACKLOG, 100)
 
-          .childHandler(new ChannelInitializer<SocketChannel>() {
-            @Override
-            public void initChannel(SocketChannel ch) throws Exception {
-              if (sslContext != null) {
-                ch.pipeline().addLast(sslContext.newHandler(ch.alloc()));
-              }
-              ch.pipeline().addLast(
-                  new ChunkedWriteHandler(),
-                  new DirstreamServerHandler(source));
-
-
+        .childHandler(new ChannelInitializer<SocketChannel>() {
+          @Override
+          public void initChannel(SocketChannel ch) throws Exception {
+            if (sslContext != null) {
+              ch.pipeline().addLast(sslContext.newHandler(ch.alloc()));
             }
-          });
+            ch.pipeline().addLast(
+                new ChunkedWriteHandler(),
+                new DirstreamServerHandler(source));
 
-      ChannelFuture f = b.bind(port).sync();
-      final InetSocketAddress socketAddress =
-          (InetSocketAddress) f.channel().localAddress();
-      port = socketAddress.getPort();
-      LOG.info("Started streaming server on " + port);
-    } catch (InterruptedException ex) {
-      throw new RuntimeException(ex);
-    }
+
+          }
+        });
+
+    ChannelFuture f = b.bind(port).sync();
+    final InetSocketAddress socketAddress =
+        (InetSocketAddress) f.channel().localAddress();
+    port = socketAddress.getPort();
+    LOG.info("Started streaming server on " + port);
+
   }
 
   public void stop() {

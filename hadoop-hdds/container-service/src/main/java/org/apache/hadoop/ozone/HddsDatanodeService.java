@@ -273,7 +273,7 @@ public class HddsDatanodeService extends GenericCli implements ServicePlugin {
         startRatisForTest();
       }
       registerMXBean();
-    } catch (IOException e) {
+    } catch (IOException | InterruptedException e) {
       throw new RuntimeException("Can't start the HDDS datanode plugin", e);
     } catch (AuthenticationException ex) {
       throw new RuntimeException("Fail to authentication when starting" +
@@ -288,7 +288,7 @@ public class HddsDatanodeService extends GenericCli implements ServicePlugin {
    * In can be forced to make it possible to test one, single, isolated
    * datanode.
    */
-  private void startRatisForTest() throws IOException {
+  private void startRatisForTest() throws IOException, InterruptedException {
     String scmId = "scm-01";
     String clusterId = "clusterId";
     datanodeStateMachine.getContainer().start(clusterId);

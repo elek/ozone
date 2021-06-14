@@ -99,7 +99,7 @@ public class ReplicationServer {
     server = nettyServerBuilder.build();
   }
 
-  public void start() throws IOException {
+  public void start() throws IOException, InterruptedException {
     server.start();
 
     if (port == 0) {
