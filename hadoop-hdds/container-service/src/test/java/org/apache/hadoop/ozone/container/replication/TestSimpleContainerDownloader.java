@@ -35,6 +35,8 @@ import org.apache.hadoop.hdds.protocol.MockDatanodeDetails;
 import org.junit.Assert;
 import org.junit.Test;
 
+import javax.xml.crypto.Data;
+
 /**
  * Test SimpleContainerDownloader.
  */
@@ -98,6 +100,22 @@ public class TestSimpleContainerDownloader {
     //first datanode is failed, second worked
     Assert.assertEquals(datanodes.get(1).getUuidString(), result.toString());
   }
+
+  @Test(expected = ExecutionException.class)
+  public void testGetContainerDataFromReplicasAsyncAllFailure() throws Exception {
+
+    //GIVEN
+    List<DatanodeDetails> datanodes = createDatanodes();
+
+    SimpleContainerDownloader downloader =
+        createDownloaderWithPredefinedFailures(false,
+            datanodes.toArray(new DatanodeDetails[0]));
+
+    //WHEN
+    downloader.getContainerDataFromReplicas(1L, datanodes)
+        .get(1L, TimeUnit.SECONDS);
+  }
+
 
   /**
    * Test if different datanode is used for each download attempt.
